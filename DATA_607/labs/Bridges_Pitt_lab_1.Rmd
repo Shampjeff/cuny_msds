@@ -1,0 +1,63 @@
+---
+title: "Hands_On_lab_1"
+author: "Jeff Shamp"
+date: "1/28/2020"
+output: html_document
+---
+Pittsburgh is known locally as the city of bridges, the construction of the bridges are a result of city's location at the 
+confluence of three major rivers; the Allegheny, the Monongahela, and the Ohio. Pittsburgh was a steel town for much of it's history so as the city grew during the industrial era, more and more bridges were need to connect residents across the rivers to the steel mills and factories. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(RCurl)
+data <- getURL("https://archive.ics.uci.edu/ml/machine-learning-databases/bridges/bridges.data.version1")
+df <- data.frame(read.csv(text = data, header = FALSE))
+head(df)
+```
+The data columns do not come with names. We will need to rename them. 
+```{r}
+df<-rename(df, c("V1"="Id", "V2"="river", "V3"="location","V4"="erected","V5"="purpose",
+             "V6"="length", "V7"="lanes","V8"="clear_g","V9"="t_or_d", "V10"="material",
+             "V11"="span","V12"="rel", "V13"="type"))
+head(df)
+```
+## Age of Bridges
+Now let's look at the age range of the bridges in Pittsburgh. I suspect most were built between 1850 and 1950. 
+```{r}
+summary(df$erected)
+boxplot(df$erected ~ df$material)
+```
+
+
+## Construction Materials
+Below are building materials for each bridge
+```{r}
+summary(df$material)
+```
+While there are a few unkowns, the primary materials are Iron, Steel, and Wood. I would imagine that most of the
+very old bridges are Iron or Wood, and that the steel bridges were likely built after 1920. 
+We can subset build year with material type to if that's true. 
+
+```{r}
+material_sub<- subset(df, material=="STEEL")
+summary(material_sub$erected)
+```
+So the first steel bridge was built in 1876 and the last steel bridge was built in 1978. 1978 was not the last bridge built in Pittsburgh. 
+
+```{r}
+last_bridge <- subset(df, erected > 1978)
+summary(last_bridge$material)
+```
+The two unknown material are the most recent, strange. I guess they must a mix of materials rather than a clear iron, steel, or wood. 
+
+
+## Bridges to North Shore
+The norh shore area of Pittsburgh has long a working-class area that was originally started as a neighborhood for early factory workers. Let's see how many bridges connect there. The north shore areas are located across the Allegheny River. 
+```{r}
+north_shore<-subset(df, river=="A")
+summary(north_shore$erected)
+```
+One the first bridges and last one were built over the Allegheny River and connecting the north shore neighborhoods to the main city. 
