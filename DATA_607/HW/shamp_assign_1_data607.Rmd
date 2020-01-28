@@ -1,0 +1,98 @@
+---
+title: "Assignment_1_data_607"
+author: "Jeff Shamp"
+date: "1/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Tracking Congress in the Age of Trump
+## Introduction
+538.com updates a daily tally of who in congress supports Pres. Trump by voting in alingment with his agend. 
+The also have built a prediction as to how frequently the Congressperson 'should' vote in alignment with Pres. Trump 
+based on how that congressperson's district of state voted in the last general election. They also provide a simple
+difference between how there actual record differs from the predicted record. 
+
+
+I like this idea becuase it takes the general voting trend of a given district or state as a proxy for hwo aligned that 
+location is with Pres. Trump's agend. It makes for an interesting view into how well a member of Congress aligns with
+the voting record of their constituency vs. their alignment with Trump. 
+
+For my analysis, I will be focusing on the Senate as they are in the spotlight right for the impeachment trial. 
+I also think the Senate if significantly more out-of-touch with American than the House of Representatives. 
+
+First we bring in the data and clean and process some values and columns
+```{r}
+library(RCurl)
+d<-getURL("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/averages.csv")
+d<-read.csv(text=d)
+df<-data.frame(d)
+senate_df<-subset(df, chamber=='senate')
+senate_df$party[senate_df$party == "I"]<- "Independent"
+senate_df$party[senate_df$party == "D"]<- "Democrat"
+senate_df$party[senate_df$party == "R"]<-"Republican"
+head(senate_df)
+```
+I'll also remove some of the columns that I do not think are important for this assignment. 
+
+```{r}
+senate_df<- subset(senate_df, select=-c(district,bioguide, chamber))
+head(senate_df)
+```
+Now we have all the Senators, their party affliation, and voting stats relative to their constituency. 
+
+The last thing that will be removed is the Congresspersons session-by-session record. I'll simply focus on the Senators
+aggregated voting record for the time that Trump has been in office. There is a column title `congress` which lets the 
+reader know during which session of Congress the votes were cast. I'll drop those rows and keep the combined record. 
+
+```{r}
+senate_df<- subset(senate_df, congress==0)
+senate_df<- subset(senate_df, select=-c(congress))
+head(senate_df)
+```
+
+## Exploratory Data Analysis
+Now that we have cleaned and consistently formatted data, we can explore some basic questions. 
+
+### Who votes for Trump when they do not have to?
+Within this dataset is a column `net_trump_vote` which is the percent of the this consitutency that voted for Trump
+minus the percent population that voted for Hillary Clinton. Negative values represent states that voted majority
+for Clinton, and positive values are populations that majority voted for Trump. As such, it stands to reason that
+low values, especially low negative values, represent populations that are swing states for Trump. I would not 
+expect a Senator to vote very strongly pro-Trump is this regard, as they seem to be vunerable in elections. 
+
+I'll look for Senators with 3% plus or minus `net_trump_vote` score that also have more than 60% vote alignment 
+with the president. 
+
+```{r}
+swing_df<- subset(senate_df, agree_pct>.60 & net_trump_vote>-3 & net_trump_vote<=3)
+swing_df
+```
+Indeed there is a very small number of Senators who vote well-aligned with Trump even though their home states are true swing states.
+
+```{r}
+plot(x=swing_df$net_trump_vote, y=swing_df$agree_pct, xlab='Net Trump Vote', ylab = 'Percent Alignment with Trump')
+```
+
+Above we see Susan Collins and Dean Heller (Heller no longer in Congress) having a
+relatively high agreement with Trump despite representing states who voted for Clinton. The other on the right-hand side of the plot are Rick Scott, Marco Rubio, 
+and Pat Toommey. With the exception of Collins these Senator are from classic 
+swing states. 
+
+If we look at each Senators predicted agreement with Trump vs. their actual agreement 
+with Trump we see that the predicted values are not great overall. Perfect agreement
+would be a linear relationship. 
+```{r}
+plot(senate_df$predicted_agree~senate_df$agree_pct, xlab='Percent Alignment with Trump',ylab = 'Predicted Alignment with Trump')
+```
+
+## Conclusions 
+If I were a Democratic strategist, I would segment this information further to help identify
+place to focus time and money to turn out Democratic voters. 
+
+In terms of the predicted alignment with Trump, it needs more work. I would like to see primary 
+voting data for swing state Senators like Rick Scott or Susan Collins as their alignment with 
+Trump might be due to the sensibilities of Republican primary voters. 
