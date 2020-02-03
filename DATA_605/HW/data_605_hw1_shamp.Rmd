@@ -94,6 +94,8 @@ for one variable.
 
 ```{r}
 three.variable.solver<- function(coeff_matrix, soln_arr) {
+  result<- rep(NA, 3)
+  # split the three equations into 2 systems of two equations. Reuses one equation.
   if (dim(coeff_matrix)[1] == 3 & dim(coeff_matrix)[2] == 3){
     sys_1<-coeff_matrix[1:2,]
     sys_2<-coeff_matrix[2:3,]
@@ -102,14 +104,25 @@ three.variable.solver<- function(coeff_matrix, soln_arr) {
   } else {
     print('Not a 3x3 matrix!')
   }
-  sys_1_list<-two.equation.elim(sys_1, soln_1)
+  # check for leading zeros.
+  if (0 %in% sys_1[,1] == TRUE){
+    var_1<-two.equation.elim(sys_1[,2:3], soln_1)
+    result[3]<- (var_1[[2]]/var_1[[1]])
+  } else {
+    sys_1_list<-two.equation.elim(sys_1, soln_1)
+  }
+  if (0 %in% sys_2[,1] == TRUE){
+    var_1<-two.equation.elim(sys_2[,2:3], soln_2)
+    result[3]<- (var_1[[2]]/var_1[[1]])
+  } else{
   sys_2_list<-two.equation.elim(sys_2, soln_2)
-  
-  result<- rep(NA, 3)
+  }
+  if (NA %in% result[3] == TRUE){
   #reshaping for maxtrix ops
   sys_3_coeff<-append(sys_1_list[[1]], sys_2_list[[1]])
   sys_3_soln<-append(sys_1_list[[2]], sys_2_list[[2]])
   sys_3_coeff<-matrix(sys_3_coeff, byrow=T, nrow=2)
+  
   # final_var should be the solution to the third variable
   var_1<-two.equation.elim(sys_3_coeff, sys_3_soln)
   result[3]<- (var_1[[2]]/var_1[[1]])
@@ -120,9 +133,23 @@ three.variable.solver<- function(coeff_matrix, soln_arr) {
   var_2<-two.equation.elim(sys_1[,1:2], soln_1)
   result[2]<- (var_2[[2]]/var_2[[1]])
   
+  #sub again for last variable
   x_values<-sys_1[,2]*result[2]
   soln_1<-soln_1-x_values
   result[1]<-(soln_1[1]/sys_1[1,1])
+  
+  } else {
+  y_values<-sys_1[,3]*result[3]
+  soln_1<-soln_1-y_values
+  var_2<-two.equation.elim(sys_1[,2:3], soln_1)
+  result[2]<- (var_2[[2]]/var_2[[1]])
+  
+  #sub again for last variable
+  x_values<-sys_1[,2]*result[2]
+  soln_1<-soln_1-x_values
+  result[1]<-(soln_1[1]/sys_1[2,2])
+    
+  }
   return(result)
 }
 ```
@@ -137,14 +164,11 @@ three.variable.solver(test_mat, soln)
 
 As excepted. Let's test for leading 0 coefficient.
 ```{r}
-test<-c(1,1,3,-1,-2,4,0,3,3)
+test<-c(1,-1,5,3,-2,-2,-1,5,3)
 test_mat<-matrix(test, byrow = T, nrow = 3)
 soln<- c(1,6,-2)
 three.variable.solver(test_mat, soln)
 ```
-So this is the zero pivot case, it seems. If the equation has a coefficient of 0 in the *x* position, then the system breaks
-down. However, this situation is a simpler case to solve, so maybe a simple if/else can fix this issue. 
-
-
+Ok Great. 
 
 
