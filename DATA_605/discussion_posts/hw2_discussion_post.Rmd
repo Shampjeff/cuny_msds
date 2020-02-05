@@ -1,0 +1,43 @@
+---
+title: "discussion post hw2"
+author: "Jeff Shamp"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem Set 2
+## Matrix Factorization
+This is from problem set 2 - I think I have a soluntion but I feel like it's a "hacky" soluntion and could be much tighter. 
+Namely, is there a better way to handle the fact that the number of rows needed to elminate decrease with each iterative column. The first time around we need to elmination nrows-1 and column 1. The second time its nrows-2 and column 2. I use a row indexing variable `row_idx`, but I feel like this is inefficient. 
+
+Write a function that factorizes any square matrix dimension 5x5 or less. No permuting rows necessary. 
+
+```{r}
+matrix.factorize<- function(input_mat){
+  mat_L<-diag(dim(input_mat)[1])
+  row_idx<-1
+  for(j in 1:(dim(input_mat)[2]-1)){
+    for(i in 1:(dim(input_mat)[1]-row_idx)){
+      gcm<-(input_mat[i+row_idx,j]/input_mat[j,j])*(-1)
+      augment_vec<- (gcm*input_mat[row_idx,])+input_mat[i+row_idx,]
+      input_mat[i+row_idx,]<-augment_vec
+      mat_L[i+row_idx,j]<-gcm*(-1)
+    }
+    row_idx<-row_idx+1
+  }
+  return(list(input_mat, mat_L))
+}
+```
+
+Test the known example from the video posted in "Weekly Materials". 
+```{r}
+a<-matrix(c(2,4,-4,1,-4,3,-6,-9,5), byrow = T, nrow=3)
+soln<-matrix.factorize(a)
+soln[[2]]%*%soln[[1]]
+```
+Returns the input matrix under multiplication such that, $A = LU$. 
+

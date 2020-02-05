@@ -1,0 +1,36 @@
+---
+title: "Shamp TidyVerse Sample"
+author: "Jeff Shamp"
+date: "2/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Data Collection and Cleaning
+I am attaching the libraries `tidyverse` and `RCurl` but will suppress their output for the sake of readability. 
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+Bring in the data using readr. 
+```{r, results='hide'}
+url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/averages.csv"
+df<- read_csv(file = url)
+```
+
+Cleaning the party names. 
+```{r}
+df$party[df$party == "I"]<- "Independent"
+df$party[df$party == "D"]<- "Democrat"
+df$party[df$party == "R"]<-"Republican"
+df<-subset(df, select = -c(district, bioguide))
+head(df)
+```
+
+
+
