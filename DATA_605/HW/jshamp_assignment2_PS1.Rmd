@@ -2,7 +2,10 @@
 title: "jshamp assignment2 PS1 and PS2"
 author: "Jeff Shamp"
 date: "2/5/2020"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -33,7 +36,7 @@ ___
 
 # Problem Set 2
 ## Matrix Factorization
-Write a function that factorizes any square matrix less the dimension 5x5. No permuting rows necessary. 
+Write a function that factorizes any square matrix less than dimension 5x5. No permuting rows necessary. 
 
 ```{r}
 matrix.factorize<- function(input_mat){
@@ -41,12 +44,13 @@ matrix.factorize<- function(input_mat){
   row_idx<-1
   for(j in 1:(dim(input_mat)[2]-1)){
     for(i in 1:(dim(input_mat)[1]-row_idx)){
-      gcm<-(input_mat[i+row_idx,j]/input_mat[j,j])*(-1)
-      augment_vec<- (gcm*input_mat[row_idx,])+input_mat[i+row_idx,]
-      input_mat[i+row_idx,]<-augment_vec
-      mat_L[i+row_idx,j]<-gcm*(-1)
+      mat_L[i+row_idx,j]<-(input_mat[i+row_idx,j] /
+                             input_mat[j,j])
+      input_mat[i+row_idx,]<-((-1*mat_L[i+row_idx,j]) *
+                                input_mat[row_idx,]) +
+                                input_mat[i+row_idx,]
     }
-    row_idx<-row_idx+1
+  row_idx<-row_idx+1
   }
   return(list(input_mat, mat_L))
 }
@@ -63,8 +67,8 @@ Returns the input matrix under multiplication such that, $A = LU$.
 Let's try one more from the video. 
 ```{r}
 b<-matrix(c(1,4,-3,-2,8,5,3,4,7), byrow = T, nrow=3)
-soln_2<-matrix.factorize(b)
-soln_2[[2]]%*%soln_2[[1]]
+soln<-matrix.factorize(b)
+soln[[2]]%*%soln[[1]]
 ```
 Solid. 
 

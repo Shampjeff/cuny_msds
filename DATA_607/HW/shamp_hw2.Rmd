@@ -1,0 +1,163 @@
+---
+title: "607 HW2 - R and SQL"
+author: "Jeff Shamp"
+date: "2/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# SQL Database Access in R - Movie Ratings 2020
+
+This assignment seems to ask for a database setup for individually collected movie ratings per student. Then some form of analysis of those results with a special emphasis on handling missing values. In general, I'll pull information from SQL when needed and do most data manipulation in R as it is easier and faster and does not require a password each time. 
+
+We start with the necessary packages to access a remote database and secure login creditials. 
+
+I'm using the follow libraries: **DBI,RMySQL, keyring, dplyr, tidyr, and ggplot2**
+```{r, include=FALSE}
+library("DBI")
+library("RMySQL")
+library("keyring")
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+```
+
+Using the `keyring` package to secure database password - this is a very simplest setup. The downside to this approach is that you need to enter the password for each query. Keyring does not like the knitting process to HTML, so it throws a couple of warning messages. 
+```{r, rewults='hide'}
+key_set(service = "gcp-db", 
+        username = "root")
+user_id<- key_list("gcp-db")[1,2]
+password<- key_get("gcp-db", "root")
+```
+
+This is a function to return an R dataframe from a GCP SQL database. This makes data access more reusable. 
+```{r}
+run.sql<- function(query, db_name){
+  conn <-
+    dbConnect(
+      RMySQL::MySQL(),
+      username = 'root',
+      password = 'data607',
+      host = '34.68.193.229',
+      dbname = db_name,
+      UID = user_id,
+      PWD = password
+    ) 
+  result <- dbSendQuery(conn, query)
+  data <- dbFetch(result)
+  dbDisconnect(conn) 
+  return(data)
+}
+```
+
+## Extraction
+I also loaded the tb database onto my GCP so we can also access that data directly from RStudio. This also shows the ease of the `run.sql` function. All I need is a query and database name to fetch a new R dataframe. 
+
+```{r}
+query<- paste("
+              select country, 
+              min(year) as min_year, 
+              max(year) as max_year
+              from tb
+              group by country 
+              
+               ")
+df_tb<-run.sql(query, "tb")
+```
+```{r}
+head(df_tb)
+```
+
+I built the `2020_movie_ratings` db to have two tables. One for general rating and one for the movie's oscar worthiness according to the reviewer. Below is a query to access, join and average the general rating and oscar worthiness into on data frame. 
+
+```{r, results='hide'}
+query<- paste("
+              SELECT r.movie,
+              AVG(r.rating) AS avg_rating, 
+              AVG(o.rating) AS avg_oscar
+              FROM ratings AS r
+              JOIN oscars AS o
+              ON r.movie = o.movie
+              GROUP BY r.movie
+              ORDER BY avg_rating
+              ")
+df<-run.sql(query, "2020_movie_ratings")
+```
+
+
+```{r}
+df
+```
+
+These are the averaged numbers for each table. I'll pull down each table and examine the missing values in R. 
+
+```{r}
+query<- paste("
+              SELECT * FROM ratings
+              ")
+rating_df<-run.sql(query, "2020_movie_ratings")
+
+query<- paste("
+              SELECT * FROM oscars
+              ")
+oscar_df<-run.sql(query, "2020_movie_ratings")
+```
+
+## Transformation
+
+Let's first explore the ratings table and the percent missing. 
+```{r}
+sum(is.na(rating_df$rating))/dim(rating_df)[1]
+```
+
+One third are missing. Why don't grad students watch more movies? I think it would be a huge stretch to fill these values, but maybe we can drop a movie if it has not been viewed by many people. 
+
+What was the most unwatched movie?
+```{r}
+unwatched<-subset(rating_df %>% group_by(movie) %>% count(rating), is.na(rating)==T,-rating)
+unwatched[order(unwatched$n,decreasing = T),]
+```
+Wow. I did not expect that. Only three people have watched The Irishman (only 8 surveys filled out). I'll drop it and find a way to fill the other values. 
+
+```{r}
+rating_df<-subset(rating_df, movie != 'the_irishman')
+```
+```{r}
+rating_count<-rating_df %>% group_by(movie, rating) %>% tally()
+```
+
+Let's look at the distribution of values to see if a simple tactic like mean imputation would be a clearly horrible idea. 
+
+```{r}
+ggplot(rating_count, aes(x=rating, y=n)) + geom_count(na.rm = T) + facet_wrap(~movie)
+```
+Nothing appears to be bi-modal or something strange such that filling values with the mean will be good enough. 
+
+```{r}
+movies<-c('Joker','marriage_story','once_upon_a_time_hollywood', 'nineteen_seventeen','hustlers','the_farewell','little_women')
+for (i in 1:7){
+  col_mean<-mean(subset(rating_df, movie==movies[i])$rating, na.rm = T)
+  if (is.na(col_mean)==F){
+    rating_df[rating_df$movie==movies[i] & 
+     is.na(rating_df$rating)==T,]$rating<- replace_na(rating_df[rating_df$movie==movies[i] &
+                                            is.na(rating_df$rating)==T,]$rating,col_mean)
+  }
+}
+```
+Now we have a dataframe with values filled by each movies average rating. 
+
+As a check that the values have been filled
+```{r}
+sum(is.na(rating_df))
+```
+Great. 
+
+
+
+
+
+
+
+
