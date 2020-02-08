@@ -2,7 +2,8 @@
 title: "607 HW2 - R and SQL"
 author: "Jeff Shamp"
 date: "2/6/2020"
-output: html_document
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -12,9 +13,49 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This assignment seems to ask for a database setup for individually collected movie ratings per student. Then some form of analysis of those results with a special emphasis on handling missing values. In general, I'll pull information from SQL when needed and do most data manipulation in R as it is easier and faster and does not require a password each time. 
 
-We start with the necessary packages to access a remote database and secure login creditials. 
+## Password Masking
+I could not find an all-in-one password mask for both `.Rmd` and `HTML` versions of this work so I had to imploy two masking techniques to effectively hide my database password. 
 
-I'm using the follow libraries: **DBI,RMySQL, keyring, dplyr, tidyr, and ggplot2**
+### Mask For `.Rmd` File
+The `keyring` package is a very simplest setup. The downside to this approach is that you need to enter the password for each session. Also `keyring` does not like the knitting process, so it throws a couple of warning messages in the `HTML` file and cannot be used while rendering `HTML`. In the `.Rmd` file on github you will see a variable `password` to store the password for the database. 
+
+### Mask For `.HTML` File
+Since `keyring` does not support `HTML`, I set a parameter in this markdown file to store the database password. When knitting, the password is not displayed to the `HTML` file. Parameters can be found the beginning of R markdown files and look like this:
+
+```markdown
+---
+title: "607 HW2 - R and SQL"
+author: "Jeff Shamp"
+date: "2/6/2020"
+output:
+  html_document: default
+params:
+  pwd:  "<totaly not my password>"
+---
+```
+
+The file published to Rpubs contains the parameter `pwd` and can be used in the R code for accessing the database by `params$pwd`. When knitting this file is changed to look like the following.
+
+```markdown
+run.sql<- function(query, db_name){
+  conn <-
+    dbConnect(
+      RMySQL::MySQL(),
+      username = user_id,
+      password = params$pwd,
+      host = '34.68.193.229',
+      dbname = db_name,
+      UID = user_id,
+      PWD = password
+    ) 
+```
+
+I hope someone else came up with a more effcient way to do this!
+
+## Extraction
+
+I'm using the follow libraries: **DBI, RMySQL, keyring, dplyr, tidyr, and ggplot2**
+
 ```{r, include=FALSE}
 library("DBI")
 library("RMySQL")
@@ -24,7 +65,8 @@ library("tidyr")
 library("ggplot2")
 ```
 
-Using the `keyring` package to secure database password - this is a very simplest setup. The downside to this approach is that you need to enter the password for each query. Keyring does not like the knitting process to HTML, so it throws a couple of warning messages. 
+Using the `keyring` package to secure database password. 
+
 ```{r, rewults='hide'}
 key_set(service = "gcp-db", 
         username = "root")
@@ -38,8 +80,8 @@ run.sql<- function(query, db_name){
   conn <-
     dbConnect(
       RMySQL::MySQL(),
-      username = 'root',
-      password = 'data607',
+      username = user_id,
+      password = password,
       host = '34.68.193.229',
       dbname = db_name,
       UID = user_id,
@@ -52,10 +94,9 @@ run.sql<- function(query, db_name){
 }
 ```
 
-## Extraction
 I also loaded the tb database onto my GCP so we can also access that data directly from RStudio. This also shows the ease of the `run.sql` function. All I need is a query and database name to fetch a new R dataframe. 
 
-```{r}
+```{r, result='hide'}
 query<- paste("
               select country, 
               min(year) as min_year, 
@@ -91,7 +132,7 @@ df<-run.sql(query, "2020_movie_ratings")
 df
 ```
 
-These are the averaged numbers for each table. I'll pull down each table and examine the missing values in R. 
+These are the averaged numbers for each table. I'll pull down each table and examine the missing values in R. The sample here is really small, so this is a trivial example, but with a large data set, filling values is very useful especially if you are going to predict values in the future. 
 
 ```{r}
 query<- paste("
@@ -108,6 +149,7 @@ oscar_df<-run.sql(query, "2020_movie_ratings")
 ## Transformation
 
 Let's first explore the ratings table and the percent missing. 
+
 ```{r}
 sum(is.na(rating_df$rating))/dim(rating_df)[1]
 ```
@@ -115,47 +157,100 @@ sum(is.na(rating_df$rating))/dim(rating_df)[1]
 One third are missing. Why don't grad students watch more movies? I think it would be a huge stretch to fill these values, but maybe we can drop a movie if it has not been viewed by many people. 
 
 What was the most unwatched movie?
+
 ```{r}
 unwatched<-subset(rating_df %>% group_by(movie) %>% count(rating), is.na(rating)==T,-rating)
 unwatched[order(unwatched$n,decreasing = T),]
 ```
+
 Wow. I did not expect that. Only three people have watched The Irishman (only 8 surveys filled out). I'll drop it and find a way to fill the other values. 
 
 ```{r}
 rating_df<-subset(rating_df, movie != 'the_irishman')
+oscar_df<- subset(oscar_df, movie != 'the_irishman')
 ```
 ```{r}
 rating_count<-rating_df %>% group_by(movie, rating) %>% tally()
+rating_count
 ```
 
 Let's look at the distribution of values to see if a simple tactic like mean imputation would be a clearly horrible idea. 
 
 ```{r}
-ggplot(rating_count, aes(x=rating, y=n)) + geom_count(na.rm = T) + facet_wrap(~movie)
+ggplot(rating_count, aes(x=rating))  + 
+  geom_col(aes(x=rating, y=n), na.rm=T,position='dodge',alpha=.3,fill='pink',color='red') + 
+  facet_wrap(~movie) +
+  labs(x="Rating", y="Count")
 ```
-Nothing appears to be bi-modal or something strange such that filling values with the mean will be good enough. 
+
+Nothing appears to be too bi-modal or something strange such that filling values with the mean will be good enough. 
 
 ```{r}
 movies<-c('Joker','marriage_story','once_upon_a_time_hollywood', 'nineteen_seventeen','hustlers','the_farewell','little_women')
 for (i in 1:7){
   col_mean<-mean(subset(rating_df, movie==movies[i])$rating, na.rm = T)
+  col_mean_oscar<-mean(subset(oscar_df, movie==movies[i])$rating, na.rm = T)
+
   if (is.na(col_mean)==F){
     rating_df[rating_df$movie==movies[i] & 
      is.na(rating_df$rating)==T,]$rating<- replace_na(rating_df[rating_df$movie==movies[i] &
                                             is.na(rating_df$rating)==T,]$rating,col_mean)
+    oscar_df[oscar_df$movie==movies[i] & 
+     is.na(oscar_df$rating)==T,]$rating<- replace_na(oscar_df[oscar_df$movie==movies[i] &
+                                            is.na(oscar_df$rating)==T,]$rating,col_mean_oscar)
   }
 }
 ```
+
 Now we have a dataframe with values filled by each movies average rating. 
 
-As a check that the values have been filled
+As a check that the values have been filled.
+
 ```{r}
 sum(is.na(rating_df))
+sum(is.na(oscar_df))
 ```
 Great. 
 
+```{r}
+rating_df <-rating_df %>% 
+  group_by(movie) %>%
+    summarise(rating = mean(rating)) %>%
+      rename(
+        avg_rating = rating
+      )
+oscar_df <-oscar_df %>% 
+  group_by(movie) %>%
+    summarise(rating = mean(rating)) %>%
+      rename(
+        avg_rating = rating
+      )
 
+```
 
+Now we have both dataframes aggregated and null values are filled with their movie group average. I'll merge them back together. 
+
+## Analysis
+
+```{r}
+movie_df<- merge(rating_df, oscar_df, by="movie", suffixes = c("_general", "_oscar"))
+row.names(movie_df)<-1:nrow(movie_df)
+movie_df
+```
+
+Again, this is a trivial example as the dataset has only eight observations so filling with the mean value has not meaningfully changed the average ratings from when NAs were present. 
+
+Nonetheless, let's look at results for some kind of insight. 
+
+```{r}
+ggplot(data = movie_df, aes(x=movie)) + 
+  geom_col(aes(x=movie,y=avg_rating_general),position='dodge',alpha=.8,fill='lightblue',color='lightblue4')+
+  geom_col(aes(x=movie,y=avg_rating_oscar), position='dodge',alpha=.3,fill='pink',color='red') + 
+  coord_flip()+ 
+  labs(x = "Movie",y = "Average Rating",color = "Legend")  
+```
+
+Here we see the blue represent general rating and red represent oscar worthiness. Hustlers, Joker, and Once Upon A Time in Hollywood seemed to be well liked, but not considered as oscar worthy. This is the opposite for 1917, Marriage Story, and Little Women who seem to be consider more of oscar material even if the review did not like them as much. The Farewell was the only movie that was tied in general and oscar worthiness, it's a shame The Farewell was not nominated for an oscar. 
 
 
 
