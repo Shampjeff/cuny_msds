@@ -372,6 +372,7 @@ summary {
 <div id="sql-database-access-in-r---movie-ratings-2020" class="section level1">
 <h1>SQL Database Access in R - Movie Ratings 2020</h1>
 <p>This assignment seems to ask for a database setup for individually collected movie ratings per student. Then some form of analysis of those results with a special emphasis on handling missing values. In general, I’ll pull information from SQL when needed and do most data manipulation in R as it is easier and faster and does not require a password each time.</p>
+<p><strong>SQL script for creating the movie rating database is in the github repo linked to this assignment!</strong></p>
 <div id="password-masking" class="section level2">
 <h2>Password Masking</h2>
 <p>I could not find an all-in-one password mask for both <code>.Rmd</code> and <code>HTML</code> versions of this work so I had to imploy two masking techniques to effectively hide my database password.</p>
@@ -399,9 +400,7 @@ params:
       username = user_id,
       password = params$pwd,
       host = '34.68.193.229',
-      dbname = db_name,
-      UID = user_id,
-      PWD = password
+      dbname = db_name
     ) </code></pre>
 <p>I hope someone else came up with a more effcient way to do this!</p>
 </div>
@@ -424,9 +423,7 @@ password&lt;- key_get(&quot;gcp-db&quot;, &quot;root&quot;)</code></pre>
       username = user_id,
       password = params$pwd,
       host = '34.68.193.229',
-      dbname = db_name,
-      UID = user_id,
-      PWD = password
+      dbname = db_name
     ) 
   result &lt;- dbSendQuery(conn, query)
   data &lt;- dbFetch(result)

@@ -13,6 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This assignment seems to ask for a database setup for individually collected movie ratings per student. Then some form of analysis of those results with a special emphasis on handling missing values. In general, I'll pull information from SQL when needed and do most data manipulation in R as it is easier and faster and does not require a password each time. 
 
+**SQL script for creating the movie rating database is in the github repo linked to this assignment!**
+
 ## Password Masking
 I could not find an all-in-one password mask for both `.Rmd` and `HTML` versions of this work so I had to imploy two masking techniques to effectively hide my database password. 
 
@@ -44,9 +46,7 @@ run.sql<- function(query, db_name){
       username = user_id,
       password = params$pwd,
       host = '34.68.193.229',
-      dbname = db_name,
-      UID = user_id,
-      PWD = password
+      dbname = db_name
     ) 
 ```
 
@@ -83,9 +83,7 @@ run.sql<- function(query, db_name){
       username = user_id,
       password = password,
       host = '34.68.193.229',
-      dbname = db_name,
-      UID = user_id,
-      PWD = password
+      dbname = db_name
     ) 
   result <- dbSendQuery(conn, query)
   data <- dbFetch(result)
