@@ -1,0 +1,66 @@
+---
+title: "discussion_HW3"
+author: "Jeff Shamp"
+date: "2/11/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+We are to calculate the eigenvector and values for a 3x3 matrix in Upper Triangular form, which is helpful. I'll do most of this work by-hand but with some machine computation. First set up the $det(A - \lambda I)$ equation. 
+
+$det(\begin{bmatrix}
+1 & 2 & 3\\ 
+0 & 4 &5 \\ 
+0 & 0 & 6
+\end{bmatrix} - \begin{bmatrix}
+\lambda  &0  &0 \\ 
+0 & \lambda &0 \\ 
+ 0& 0 & \lambda 
+\end{bmatrix}) =0$
+
+Which expands to the following:
+
+$(1-\lambda)det(\begin{bmatrix}
+4-\lambda & 5 \\ 
+0 & 6-\lambda  
+\end{bmatrix} ) - 
+(2)det(\begin{bmatrix}
+0 &5 \\ 
+0 & 6-\lambda
+\end{bmatrix}) +
+(3)det(\begin{bmatrix}
+0 &4-\lambda \\ 
+0 & 0
+\end{bmatrix}) =0$
+
+Thankfully, the last two terms of this expansion reduce to zero. Thus we are left with the following:
+
+$(1 - \lambda)(24-10 \lambda + \lambda^{2}) =0$
+
+This expands to the following,
+
+$24-34\lambda+11\lambda^{2}-\lambda^{3}=0$
+
+Which can be factored via the fundamental theorem of algebra (luckily $\lambda=1$ is a root!). We see that this reduces to, 
+
+$-\lambda^{2}+10\lambda-24 =0$. Which factors our last two remaining eignevalues and our set of eigenvalues are as follows:
+
+$\lambda_{1}=1, \lambda_{2}=4, and \lambda_{3}=6$.
+
+If we return the first eigenvalue in the original matrix $A$ we apply $\lambda*I - A$ as the following,
+
+$\begin{bmatrix}
+0 & 2 &3 \\ 
+ 0&3  &5 \\ 
+0 &0  &5 
+\end{bmatrix} \begin{bmatrix}
+v_{1}\\ 
+v_{2}\\ 
+v_{3}
+\end{bmatrix}=0$
+
+This is as far as I got but I am struggling to calculate the eigenvectors by hand. Has anyone computed these? 

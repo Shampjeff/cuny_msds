@@ -60,7 +60,8 @@ Test the known example from the video posted in "Weekly Materials".
 ```{r}
 a<-matrix(c(2,4,-4,1,-4,3,-6,-9,5), byrow = T, nrow=3)
 soln<-matrix.factorize(a)
-soln[[2]]%*%soln[[1]]
+soln[[1]]
+#%*%soln[[1]]
 ```
 Returns the input matrix under multiplication such that, $A = LU$. 
 
