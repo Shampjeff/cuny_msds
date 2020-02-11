@@ -1,0 +1,112 @@
+---
+title: "Data 607 HW3"
+author: "Jeff Shamp"
+date: "2/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem #1
+538 dataset on college majors. Identify the majors with either data or statistics in the title. 
+
+```{r, results='hide'}
+library(stringr)
+library(RCurl)
+```
+
+```{r}
+d<-getURL("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv")
+df<-data.frame(read.csv(text=d))
+head(df)
+```
+
+```{r}
+str_subset(df$Major, pattern="DATA|STATISTICS")
+```
+
+That was a lot easier than I thought it would be. 
+
+
+## Problem #2 - Vectorize long fruits string
+
+
+```{r}
+data<-paste('[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"')
+```
+
+```{r}
+data
+```
+
+Yikes. Let's drop the `\` with `[ a-z]` and match it at least once with `+`
+
+```{r}
+str_view(data, "[ a-z]+")
+```
+
+Now we can unlist and anchor with an empty string to get the spaces. 
+
+```{r}
+fruits<-c(unlist(str_extract_all(data, "\\b[ a-z]+\\b")))
+fruits[5:9]
+```
+
+```{r}
+typeof(fruits)
+```
+
+So `fruits` is now a character vector. Nice. 
+
+## Problem #3 - R for Data Science textbook problems
+
+### Describe, in words, what these expressions will match:
+
+- (.)\1\1
+
+**This is a syntax error. There are no quotes and \1 is not a regex.**
+
+- "(.)(.)\\\2\\\1"
+
+**This creates two 'wildcard' characters and matches a repeat for the second item followed by a repeat of the first. **
+**Example: in 'xloolz' this command would match 'lool'**
+
+- (..)\1
+
+**This is another syntax error. Again, no quotes and \1 is not a regex match expression**
+
+- "(.).\\\1.\\\1"
+
+**The creates a 'wildcard' item and any following character and matches the item again. It then matches any second character and repeats the original item a third time.**
+**Example: in the string, 'basaxa' this command would match, 'asaxa' The item is 'a', any character, 'a', any character, 'a'.**
+
+- "(.)(.)(.).*\\\3\\\2\\\1"
+
+**This looking for any string that has three characters in a given order and in reseverse order.**
+**Example: In "abc123098cba" this command would select the entire string. In the string "abc123cba987" it would select "abc123cba" only.**
+
+## Problem #4 - 
+### Construct regular expressions to match words that:
+
+- Start and end with the same character.
+
+  -" ^(.).*\\\1$ "
+
+- Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+
+  -" (..).\*\\\1* "
+
+- Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+
+  -" .\*(.).\*\\\1.\*\\\1* "
+
+
+
