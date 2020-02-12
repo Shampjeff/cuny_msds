@@ -132,9 +132,9 @@ $-\lambda^{2}+10\lambda-24 =0$. Which factors our last two remaining eignevalues
 
 $\lambda_{1}=1, \lambda_{2}=4, and \lambda_{3}=6$.
 
-If we return the first eigenvalue in the original matrix $A$ we apply $\lambda*I - A$ as the following,
+If we return the first eigenvalue in the original matrix $A$ we apply $A-\lambda*I$ as the following,
 
-$\begin{bmatrix}
+$\varepsilon (1) =\begin{bmatrix}
 0 & 2 &3 \\ 
  0&3  &5 \\ 
 0 &0  &5 
@@ -146,7 +146,7 @@ v_{3}
 
 The second eigenvalue can be used to obtain the eigenvector in the same way subtract $\lambda = 4$ from the diagonal of the original matrix $A$ and the same is true for the the last eigenvalue. 
 
-$\begin{bmatrix}
+$\varepsilon (4)=\begin{bmatrix}
 -3 & 2 &3 \\ 
  0& 0  &5 \\ 
 0 &0  & 2 
@@ -156,12 +156,20 @@ v_{2}\\
 v_{3}
 \end{bmatrix}=0$
 
-R can compute the values of the eigenvectors and reduce them to unit values by calling the `eigen(A)$vectors` command. 
+$\varepsilon (6)=\begin{bmatrix}
+-5 & 2 &3 \\ 
+ 0& -2  &5 \\ 
+0 &0  & 0 
+\end{bmatrix} \begin{bmatrix}
+v_{1}\\ 
+v_{2}\\ 
+v_{3}
+\end{bmatrix}=0$
 
-```{r}
-A<-matrix(c(1,2,3,0,4,5,0,0,6), byrow = T, nrow = 3)
-eigen(A)$vectors
-```
+Solving these by hand and scaling them to unit vectors using the  square root of the sum of the squares we get that;
+
+$\varepsilon (1) = \begin{bmatrix} 0 \\.55 \\ 83 \end{bmatrix}$, $\varepsilon (6) = \begin{bmatrix} .51\\.30\\ .79\end{bmatrix}$, and $\varepsilon (4) = \begin{bmatrix} 1\\0\\0\end{bmatrix}$.
+
 
 This is the span of vectors for the Eigenspace that are characteristic to martix $A$. 
 

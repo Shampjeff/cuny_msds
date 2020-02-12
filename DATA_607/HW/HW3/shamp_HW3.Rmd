@@ -72,7 +72,7 @@ So `fruits` is now a character vector. Nice.
 
 - (.)\1\1
 
-**This is a syntax error. There are no quotes and \1 is not a regex.**
+**This is a syntax error. There are no quotes. If it were, "(.)\1\1", it would match a \1 in the string.**
 
 - "(.)(.)\\\2\\\1"
 
@@ -81,7 +81,7 @@ So `fruits` is now a character vector. Nice.
 
 - (..)\1
 
-**This is another syntax error. Again, no quotes and \1 is not a regex match expression**
+**This is another syntax error. Again, no quotes. If there were quotes it would match any character that is in front of a \1. Example "That store has \1 a banh mi station!", would match the 's' in 'has' followed by the space.**
 
 - "(.).\\\1.\\\1"
 
