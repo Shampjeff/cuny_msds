@@ -1,0 +1,70 @@
+---
+title: "Project 1 Chess Table"
+author: "Jeff Shamp"
+date: "2/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(RCurl)
+
+```
+
+```{r}
+# url<-getURL("https://bbhosted.cuny.edu/bbcswebdav/pid-45030907-dt-content-rid-367465948_1/courses/SPS01_DATA_607_02_1202_1/SPS01_DATA_607_02_1202_1_ImportedContent_20200126080334/tournamentinfo.txt",ssl.verifyhost=FALSE, ssl.verifypeer=FALSE)
+# df<-read.csv(text=url)
+# df
+df<-read.csv('tournamentinfo.txt', header = TRUE)
+df<-df[df != strrep("-",89)]
+df<-df[3:130]
+```
+
+```{r}
+# df<-str_extract_all(df, regex("\\b[^|[:blank:]]*([0-9]+([.][0-9]))*\\b", ignore_case=F, multiline=T))
+# df<-lapply(df, function(x) x[!x %in% ""])
+```
+
+
+
+
+
+```{r}
+ex<-paste("-----------------------------------------------------------------------------------------
+    1 | GARY HUA                        |6.0  |W  39|W  21|W  18|W  14|W   7|D  12|D   4|
+   ON | 15445895 / R: 1794   ->1817     |N:2  |W    |B    |W    |B    |W    |B    |W    |
+-----------------------------------------------------------------------------------------", sep="\n")
+line<-str_extract_all(ex, regex("\\b[^|-[:blank:]]*([0-9]+([.][0-9]))*\\b",ignore_case =  FALSE,multiline = TRUE))[[1]]
+line<-line[!line %in% ""]
+```
+
+```{r}
+col_names<-c('index','first_name','last_name', 'score', 'game_1_out', 'game_1_op','game_2_out','game_2_op', 'game_3_out', 'game_3_out', 'game_4_out', 'game_4_op', 'game_5_out', 'game_5_op', 'game_6_out', 'game_6_op', 'state', 'nonsense', 'nonsense_2', 'prev_elo', 'new_elo', 'nonsense_3', 'color_1','color_2','color_3','color_4', 'color_5','color_6')
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

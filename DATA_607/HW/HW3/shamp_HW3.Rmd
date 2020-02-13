@@ -98,15 +98,15 @@ So `fruits` is now a character vector. Nice.
 
 - Start and end with the same character.
 
-  -" ^([A-Za-z]).*\\\1$ "
+  -"^([A-Za-z]).\*\\\1$" Note: wrap the input string in the `tolower()` function
 
 - Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
 
-  -" ([A-Za-zA-Za-z]).\*\\\1* "
+  -"([a-z][a-z]).\*\\\1" Note: wrap the input string in the `tolower()` function
 
 - Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
 
-  -" .\*([A-Za-z]).\*\\\1.\*\\\1* "
+  -".\*([a-z]).\*\\\1.\*\\\1" Note: wrap the input string in the `tolower()` function
 
 
 

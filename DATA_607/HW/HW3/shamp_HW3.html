@@ -1337,8 +1337,8 @@ head(df)</code></pre>
 <pre><code>## [1] &quot;[1] \&quot;bell pepper\&quot;  \&quot;bilberry\&quot;     \&quot;blackberry\&quot;   \&quot;blood orange\&quot;\n\n[5] \&quot;blueberry\&quot;    \&quot;cantaloupe\&quot;   \&quot;chili pepper\&quot; \&quot;cloudberry\&quot;  \n\n[9] \&quot;elderberry\&quot;   \&quot;lime\&quot;         \&quot;lychee\&quot;       \&quot;mulberry\&quot;    \n\n[13] \&quot;olive\&quot;        \&quot;salal berry\&quot;&quot;</code></pre>
 <p>Yikes. Let’s drop the <code>\</code> with <code>[ a-z]</code> and match it at least once with <code>+</code></p>
 <pre class="r"><code>str_view(data, &quot;[ a-z]+&quot;)</code></pre>
-<div id="htmlwidget-f8e090bf5c0c8debc8b0" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f8e090bf5c0c8debc8b0">{"x":{"html":"<ul>\n  <li>[1]<span class='match'> <\/span>\"bell pepper\"  \"bilberry\"     \"blackberry\"   \"blood orange\"\n\n[5] \"blueberry\"    \"cantaloupe\"   \"chili pepper\" \"cloudberry\"  \n\n[9] \"elderberry\"   \"lime\"         \"lychee\"       \"mulberry\"    \n\n[13] \"olive\"        \"salal berry\"<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-27c0ac17908564677607" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-27c0ac17908564677607">{"x":{"html":"<ul>\n  <li>[1]<span class='match'> <\/span>\"bell pepper\"  \"bilberry\"     \"blackberry\"   \"blood orange\"\n\n[5] \"blueberry\"    \"cantaloupe\"   \"chili pepper\" \"cloudberry\"  \n\n[9] \"elderberry\"   \"lime\"         \"lychee\"       \"mulberry\"    \n\n[13] \"olive\"        \"salal berry\"<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 <p>Now we can unlist and anchor with an empty string to get the spaces.</p>
 <pre class="r"><code>fruits&lt;-c(unlist(str_extract_all(data, &quot;\\b[ a-z]+\\b&quot;)))
 fruits[5:9]</code></pre>
@@ -1379,11 +1379,11 @@ fruits[5:9]</code></pre>
 <h3>Construct regular expressions to match words that:</h3>
 <ul>
 <li><p>Start and end with the same character.</p>
-<p>-&quot; ^([A-Za-z]).*\\1$ &quot;</p></li>
+<p>-“^([A-Za-z]).*\\1$” Note: wrap the input string in the <code>tolower()</code> function</p></li>
 <li><p>Contain a repeated pair of letters (e.g. “church” contains “ch” repeated twice.)</p>
-<p>-&quot; ([A-Za-zA-Za-z]).*\\1* &quot;</p></li>
+<p>-“([a-z][a-z]).*\\1” Note: wrap the input string in the <code>tolower()</code> function</p></li>
 <li><p>Contain one letter repeated in at least three places (e.g. “eleven” contains three “e”s.)</p>
-<p>-&quot; .*([A-Za-z]).*\\1.*\\1* &quot;</p></li>
+<p>-“.*([a-z]).*\\1.*\\1” Note: wrap the input string in the <code>tolower()</code> function</p></li>
 </ul>
 </div>
 </div>
