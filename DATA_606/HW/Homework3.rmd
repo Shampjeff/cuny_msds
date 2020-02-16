@@ -2,13 +2,13 @@
 title: "Chapter 3 - Probability"
 author: ''
 output:
-  html_document:
-    df_print: paged
   pdf_document:
     extra_dependencies:
     - geometry
     - multicol
     - multirow
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -43,11 +43,13 @@ There is only one way to get a sum of 12, double 6s. $\frac{1}{36}$ or 2.77%
 No they are not disjoint. You can be both a non-native speaker and below the poverty line. 
 
 (b) Draw a Venn diagram summarizing the variables and their associated probabilities.
+
 ```markdown
  ---------------- - - - - - - - 
 |poverty  |both  | non-english |
-|_14%_____|_4%___|___20%_______|
+|_14%_____|_4%___|_ _20%_ _ _ _|
 ```
+
 (c) What percent of Americans live below the poverty line and only speak English at home?
 
 P(pvoerty and non-english) = 14.6% x 79.3% = 11.57% 
@@ -90,7 +92,7 @@ No. If you know something about either percentage (below poverty of speaking non
 
 (a) What is the probability that a randomly chosen male respondent or his partner has blue eyes?
 
-There are 114 males with blue eyes and 108 females with blue eyes. This captures all couples with blues eye somewhere, but we need to subrtract the double counted blue/blue couples. $114+108-78 = 144$ and $144/204 = 70.5%$ have blue eyes in either of the partners. 
+There are 114 males with blue eyes and 108 females with blue eyes. This captures all couples with blues eye somewhere, but we need to subrtract the double counted blue/blue couples. $114+108-78 = 144$ and $144/204 = 70.5\%$ have blue eyes in either of the partners. 
 
 (b) What is the probability that a randomly chosen male respondent with blue eyes has a partner with blue eyes?
 

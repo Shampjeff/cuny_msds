@@ -290,7 +290,7 @@ barplot(table(indy_streak))
 median(indy_streak)
 ```
 
-**Above we see that simulated streaks of an independent shooter with 45% hit has a distribution similar to Kobe from the NBA finals in 2009, with some important caveats. This distribution has less miss streaks and more frequent non-zero streaks. Also the median streak length is 1, which isn't much higher than Kobe, but is non-zero.**
+**Above we see that simulated streaks of an independent shooter with 45% hit has a distribution similar to Kobe from the NBA finals in 2009, with some important caveats. This distribution has less miss streaks and more frequent non-zero streaks. Also the median streak length is 1, which isn't much higher than Kobe, but is non-zero. In this context, we see that an independent shooter is no different that a supposed hot-hand. We could make a conjecture based on single simulations that an independent shooter would have (potentially) less miss-streak and some longer hit streaks as well.**
 
 -   If you were to run the simulation of the independent shooter a second time, 
     how would you expect its streak distribution to compare to the distribution 
@@ -313,7 +313,7 @@ median(indy_streak_2)
     comparison, do you have evidence that the hot hand model fits Kobe's 
     shooting patterns? Explain.
 
-**Kobe's actual streak distribution has a median of 0 and the number of consecutive shots drops off by 4, where as in both simulations the max streak length is either higher (5 or 7) or has less miss streaks and more hit streaks of all values. That's a big difference in terms of streaks. This suggests that the hot hand theory, does not have much merit. We would like to think our confidence can *will* the the ball in the basket, but I don't there is much behind that**
+**Kobe's actual streak distribution has a median of 0 and the number of consecutive shots drops off by 4, where as in both simulations the max streak length is either higher (5 or 7) or has less miss streaks and more hit streaks of all values. That's a big difference in terms of streaks, but there comparable median streak values makes the case for no difference between a hot hand and independent shooter. This suggests that the hot hand theory, does not have much merit. We would like to think our confidence can *will* the the ball in the basket, but I don't there is much behind that**
 
 
 
