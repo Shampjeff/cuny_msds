@@ -14,27 +14,31 @@ library(tidyverse)
 library(RCurl)
 ```
 
-```{r}
-#df<-read.csv('tournamentinfo.txt', header = TRUE)
-# df<-df[df != strrep("-",89)]
-# df<-df[3:130]
+# Chess ELO Table - Clean and Extract
 
-```
+The crosstable information is stored in a `.txt` file and will be to scrubed of all formatting and presented in a data frame of the following columns
 
-```{r}
-# df<-str_extract_all(df, regex("\\b[^|[:blank:]]*([0-9]+([.][0-9]))*\\b", ignore_case=F, multiline=T))
-# df<-unlist(lapply(df, function(x) x[!x %in% ""]))
-# df
-```
+Name, State, Points Scored, Prior Rank, Average Opponent Ranking
 
+## General Approach
+
+First I am going to develop the regex expressions necessary to pull the desired information from the `.txt` file. Once I get the general information, I will use the data frame features of R to further clean and prepare the data in pursuit of the final goal. 
+
+
+### Initial Formatting Clean
 
 ```{r}
 data<- readLines("tournamentinfo.txt")
 data<- data[data != strrep("-",89)]
 data<-data[3:130]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))
-data[1:100]
+data[1:10]
 ```
+
+
+## Regex 
+
+Using regex to create vectors for data fields that will go into the data frame. 
 
 ```{r}
 uscf_regex<-"[0-9]{8}"
@@ -55,13 +59,15 @@ states<-unlist(str_extract_all(data, state_regex))
 states
 ```
 
+I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; his first name is Dinh Dang and last name is Bui, I wanted to be sure that was displayed correctly. 
+
 ```{r}
-name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]+\\s | [:alpha:]+\\s[:alpha:]+"
+#
+name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*\\s|[:alpha:]+\\s[:alpha:]+"
 name<- unlist(str_extract_all(data, name_regex))
 name<- str_remove_all(name, "[:digit:]\\s\\|")
 name
 ```
-
 
 ```{r}
 score_regex<-"R:\\s*[:digit:]{3,4}"
@@ -69,6 +75,8 @@ score<-unlist(str_extract_all(data, score_regex))
 score<-str_remove_all(score, "R:\\s")
 score
 ```
+
+This regex should pull in the outcomes of each match in the form, for example, "|W  39|..." for all seven rounds. 
 
 ```{r}
 games_regex<-"(\\|[WLDHUBX]\\s\\s.[:digit:]|\\|[HUBX]\\s\\s.[:blank:]){3,7}+"
@@ -80,13 +88,17 @@ for (i in 1:length(games)){
 }
 ```
 
+I will further scrub the matches to the individual Win, Loss, Draw, etc and the opponent number. The following functions separate and organize those results. 
+
 ```{r}
 make.game.outcome<- function(games_list, game_num){
   game_outcome<- rep(NA, 64)
   game_op<- rep(NA, 64)
   for (i in 1:length(games_list)){
-    game_outcome[i]<-str_extract(games_list[[i]][game_num], "[:alpha:]{1}")
-    game_op[i]<-str_extract(games_list[[i]][game_num], "[0-9]{1,2}")
+    game_outcome[i]<-str_extract(games_list[[i]][game_num],
+                                 "[:alpha:]{1}")
+    game_op[i]<-str_extract(games_list[[i]][game_num],
+                            "[0-9]{1,2}")
   }
   result<-list(game_outcome, game_op)
   return (result)
@@ -96,12 +108,15 @@ make.game.outcome<- function(games_list, game_num){
 ```{r}
 make.outcome.opp.data<- function(game_list,game_num){
     game_i<- make.game.outcome(game_list, game_num)
-    game_outcome<- game_i[[1]]
     game_opp<-game_i[[2]]
-    outcome_opp<-cbind(game_outcome, game_opp)
+    outcome_opp<-cbind(game_opp)
   return(outcome_opp)
 }
 ```
+
+## Dataframe Creation
+
+The following builds the dataframe and recasts some of the columns as integers or numerics.
 
 ```{r}
 df<-data.frame(name, states, uscf_id, points, score, 
@@ -113,16 +128,50 @@ df<-data.frame(name, states, uscf_id, points, score,
                make.outcome.opp.data(games,6),
                make.outcome.opp.data(games,7)
 )
-df
+factors<-c('name', 'states', 'points')
+cols<- colnames(df)
+cols<-cols[! cols %in% factors]
+cols <- cols[!is.na(cols)]
+df[,cols] <- apply(df[,cols], 2,
+                    function(x) as.integer(as.character(x)))
+options(digits=2)
+df$points<-as.numeric(as.character(df$points))
 ```
 
+Now for each row I need to replace the opponent number with that opponents pre-tournament ranking. 
 
 ```{r}
-col_names<-c('game_1_out', 'game_1_op','game_2_out','game_2_op', 'game_3_out', 'game_3_out', 'game_4_out', 'game_4_op', 'game_5_out', 'game_5_op', 'game_6_out', 'game_6_op', 'games_7_out', 'game_7_op')
-
+game_cols<- c('game_opp', 'game_opp.1', 'game_opp.2', 'game_opp.3',
+              'game_opp.4', 'game_opp.5', 'game_opp.6')
+make.opp.scores<- function(df,cols){
+  for (j in cols){
+    for (i in 1:nrow(df)){
+      df[[j]][i]<-df$score[df[[j]][i]]
+    }
+  }
+  return(df)
+}
+df<-make.opp.scores(df, game_cols)
 ```
 
+Once we have the scores in place, we can calculate the average opponent score for each player. 
 
+```{r}
+make.average.score<- function(df, cols){
+  for (i in 1:nrow(df)){
+    df$opp_average[i]<-as.integer(sum(df[i,cols],na.rm=T) /
+                                    sum(!is.na(df[i,cols])))
+  }
+  return(df)
+}
+df<-make.average.score(df, game_cols)
+```
+
+## Result
+
+```{r}
+df[ ,c('name', 'states','points','score', 'opp_average')]
+```
 
 
 
