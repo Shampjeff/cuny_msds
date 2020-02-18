@@ -371,6 +371,7 @@ summary {
 
 <div id="chess-elo-table---clean-and-extract" class="section level1">
 <h1>Chess ELO Table - Clean and Extract</h1>
+<p><em>I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy</em></p>
 <p>The crosstable information is stored in a <code>.txt</code> file and will be to scrubed of all formatting and presented in a data frame of the following columns</p>
 <p>Name, State, Points Scored, Prior Rank, Average Opponent Ranking</p>
 <div id="general-approach" class="section level2">
@@ -380,7 +381,7 @@ summary {
 <h3>Initial Formatting Clean</h3>
 <pre class="r"><code>data&lt;- readLines(&quot;tournamentinfo.txt&quot;)</code></pre>
 <pre><code>## Warning in readLines(&quot;tournamentinfo.txt&quot;): incomplete final line found on
-## 'tournamentinfo.txt'</code></pre>
+## &#39;tournamentinfo.txt&#39;</code></pre>
 <pre class="r"><code>data&lt;- data[data != strrep(&quot;-&quot;,89)]
 data&lt;-data[3:130]
 data&lt;-unlist(lapply(data, function(x) x[!x %in% &quot;&quot;]))
@@ -433,44 +434,43 @@ states</code></pre>
 ## [41] &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot;
 ## [51] &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot;
 ## [61] &quot;  ON&quot; &quot;  MI&quot; &quot;  MI&quot; &quot;  MI&quot;</code></pre>
-<p>I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; his first name is Dinh Dang and last name is Bui, I wanted to be sure that was displayed correctly.</p>
-<pre class="r"><code>#
-name_regex&lt;-&quot;[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*\\s|[:alpha:]+\\s[:alpha:]+&quot;
+<p>I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it’s a very commmon Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player’s full name</p>
+<pre class="r"><code>name_regex&lt;-&quot;[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*&quot;
 name&lt;- unlist(str_extract_all(data, name_regex))
 name&lt;- str_remove_all(name, &quot;[:digit:]\\s\\|&quot;)
 name</code></pre>
-<pre><code>##  [1] &quot; GARY HUA  &quot;                 &quot; DAKSHESH DARURI  &quot;         
-##  [3] &quot; ADITYA BAJAJ  &quot;             &quot; PATRICK H SCHILLING  &quot;     
-##  [5] &quot; HANSHI ZUO  &quot;               &quot; HANSEN SONG  &quot;             
-##  [7] &quot; GARY DEE SWATHELL  &quot;        &quot; EZEKIEL HOUGHTON  &quot;        
-##  [9] &quot; STEFANO LEE  &quot;              &quot; ANVIT RAO  &quot;               
-## [11] &quot; CAMERON WILLIAM MC LEMAN &quot;  &quot; KENNETH J TACK  &quot;          
-## [13] &quot; TORRANCE HENRY JR  &quot;        &quot; BRADLEY SHAW  &quot;            
-## [15] &quot; ZACHARY JAMES HOUGHTON  &quot;   &quot; MIKE NIKITIN  &quot;            
-## [17] &quot; RONALD GRZEGORCZYK  &quot;       &quot; DAVID SUNDEEN  &quot;           
-## [19] &quot; DIPANKAR ROY  &quot;             &quot; JASON ZHENG  &quot;             
-## [21] &quot; DINH DANG BUI  &quot;            &quot; EUGENE L MCCLURE  &quot;        
-## [23] &quot; ALAN BUI  &quot;                 &quot; MICHAEL R ALDRICH  &quot;       
-## [25] &quot; LOREN SCHWIEBERT  &quot;         &quot; MAX ZHU  &quot;                 
-## [27] &quot; GAURAV GIDWANI  &quot;           &quot;SOFIA ADINA&quot;                
-## [29] &quot; CHIEDOZIE OKORIE  &quot;         &quot; GEORGE AVERY JONES  &quot;      
-## [31] &quot; RISHI SHETTY  &quot;             &quot; JOSHUA PHILIP MATHEWS  &quot;   
-## [33] &quot; JADE GE  &quot;                  &quot; MICHAEL JEFFERY THOMAS  &quot;  
-## [35] &quot; JOSHUA DAVID LEE  &quot;         &quot; SIDDHARTH JHA  &quot;           
-## [37] &quot; AMIYATOSH PWNANANDAM  &quot;     &quot; BRIAN LIU  &quot;               
-## [39] &quot; JOEL R HENDON  &quot;            &quot; FOREST ZHANG  &quot;            
-## [41] &quot; KYLE WILLIAM MURPHY  &quot;      &quot; JARED GE  &quot;                
-## [43] &quot; ROBERT GLEN VASEY  &quot;        &quot; JUSTIN D SCHILLING  &quot;      
-## [45] &quot; DEREK YAN  &quot;                &quot; JACOB ALEXANDER LAVALLEY  &quot;
-## [47] &quot; ERIC WRIGHT  &quot;              &quot; DANIEL KHAIN  &quot;            
-## [49] &quot; MICHAEL J MARTIN  &quot;         &quot; SHIVAM JHA  &quot;              
-## [51] &quot; TEJAS AYYAGARI  &quot;           &quot; ETHAN GUO  &quot;               
-## [53] &quot; JOSE C YBARRA  &quot;            &quot; LARRY HODGE  &quot;             
-## [55] &quot; ALEX KONG  &quot;                &quot; MARISA RICCI  &quot;            
-## [57] &quot; MICHAEL LU  &quot;               &quot; VIRAJ MOHILE  &quot;            
-## [59] &quot; SEAN M MC CORMICK &quot;         &quot; JULIA SHEN  &quot;              
-## [61] &quot; JEZZEL FARKAS  &quot;            &quot; ASHWIN BALAJI  &quot;           
-## [63] &quot; THOMAS JOSEPH HOSMER  &quot;     &quot; BEN LI  &quot;</code></pre>
+<pre><code>##  [1] &quot; GARY HUA &quot;                 &quot; DAKSHESH DARURI &quot;         
+##  [3] &quot; ADITYA BAJAJ &quot;             &quot; PATRICK H SCHILLING &quot;     
+##  [5] &quot; HANSHI ZUO &quot;               &quot; HANSEN SONG &quot;             
+##  [7] &quot; GARY DEE SWATHELL &quot;        &quot; EZEKIEL HOUGHTON &quot;        
+##  [9] &quot; STEFANO LEE &quot;              &quot; ANVIT RAO &quot;               
+## [11] &quot; CAMERON WILLIAM MC LEMAN&quot;  &quot; KENNETH J TACK &quot;          
+## [13] &quot; TORRANCE HENRY JR &quot;        &quot; BRADLEY SHAW &quot;            
+## [15] &quot; ZACHARY JAMES HOUGHTON &quot;   &quot; MIKE NIKITIN &quot;            
+## [17] &quot; RONALD GRZEGORCZYK &quot;       &quot; DAVID SUNDEEN &quot;           
+## [19] &quot; DIPANKAR ROY &quot;             &quot; JASON ZHENG &quot;             
+## [21] &quot; DINH DANG BUI &quot;            &quot; EUGENE L MCCLURE &quot;        
+## [23] &quot; ALAN BUI &quot;                 &quot; MICHAEL R ALDRICH &quot;       
+## [25] &quot; LOREN SCHWIEBERT &quot;         &quot; MAX ZHU &quot;                 
+## [27] &quot; GAURAV GIDWANI &quot;           &quot; SOFIA ADINA STANESCU&quot;     
+## [29] &quot; CHIEDOZIE OKORIE &quot;         &quot; GEORGE AVERY JONES &quot;      
+## [31] &quot; RISHI SHETTY &quot;             &quot; JOSHUA PHILIP MATHEWS &quot;   
+## [33] &quot; JADE GE &quot;                  &quot; MICHAEL JEFFERY THOMAS &quot;  
+## [35] &quot; JOSHUA DAVID LEE &quot;         &quot; SIDDHARTH JHA &quot;           
+## [37] &quot; AMIYATOSH PWNANANDAM &quot;     &quot; BRIAN LIU &quot;               
+## [39] &quot; JOEL R HENDON &quot;            &quot; FOREST ZHANG &quot;            
+## [41] &quot; KYLE WILLIAM MURPHY &quot;      &quot; JARED GE &quot;                
+## [43] &quot; ROBERT GLEN VASEY &quot;        &quot; JUSTIN D SCHILLING &quot;      
+## [45] &quot; DEREK YAN &quot;                &quot; JACOB ALEXANDER LAVALLEY &quot;
+## [47] &quot; ERIC WRIGHT &quot;              &quot; DANIEL KHAIN &quot;            
+## [49] &quot; MICHAEL J MARTIN &quot;         &quot; SHIVAM JHA &quot;              
+## [51] &quot; TEJAS AYYAGARI &quot;           &quot; ETHAN GUO &quot;               
+## [53] &quot; JOSE C YBARRA &quot;            &quot; LARRY HODGE &quot;             
+## [55] &quot; ALEX KONG &quot;                &quot; MARISA RICCI &quot;            
+## [57] &quot; MICHAEL LU &quot;               &quot; VIRAJ MOHILE &quot;            
+## [59] &quot; SEAN M MC CORMICK&quot;         &quot; JULIA SHEN &quot;              
+## [61] &quot; JEZZEL FARKAS &quot;            &quot; ASHWIN BALAJI &quot;           
+## [63] &quot; THOMAS JOSEPH HOSMER &quot;     &quot; BEN LI &quot;</code></pre>
 <pre class="r"><code>score_regex&lt;-&quot;R:\\s*[:digit:]{3,4}&quot;
 score&lt;-unlist(str_extract_all(data, score_regex))
 score&lt;-str_remove_all(score, &quot;R:\\s&quot;)
@@ -506,6 +506,7 @@ for (i in 1:length(games)){
 <pre class="r"><code>make.outcome.opp.data&lt;- function(game_list,game_num){
     game_i&lt;- make.game.outcome(game_list, game_num)
     game_opp&lt;-game_i[[2]]
+    # Alternatively, the first element in this list stores the WLDHUBX game outcome
     outcome_opp&lt;-cbind(game_opp)
   return(outcome_opp)
 }</code></pre>
@@ -522,17 +523,16 @@ for (i in 1:length(games)){
                make.outcome.opp.data(games,6),
                make.outcome.opp.data(games,7)
 )
-factors&lt;-c('name', 'states', 'points')
+factors&lt;-c(&#39;name&#39;, &#39;states&#39;, &#39;points&#39;)
 cols&lt;- colnames(df)
 cols&lt;-cols[! cols %in% factors]
 cols &lt;- cols[!is.na(cols)]
 df[,cols] &lt;- apply(df[,cols], 2,
                     function(x) as.integer(as.character(x)))
-options(digits=2)
 df$points&lt;-as.numeric(as.character(df$points))</code></pre>
 <p>Now for each row I need to replace the opponent number with that opponents pre-tournament ranking.</p>
-<pre class="r"><code>game_cols&lt;- c('game_opp', 'game_opp.1', 'game_opp.2', 'game_opp.3',
-              'game_opp.4', 'game_opp.5', 'game_opp.6')
+<pre class="r"><code>game_cols&lt;- c(&#39;game_opp&#39;, &#39;game_opp.1&#39;, &#39;game_opp.2&#39;, &#39;game_opp.3&#39;,
+              &#39;game_opp.4&#39;, &#39;game_opp.5&#39;, &#39;game_opp.6&#39;)
 make.opp.scores&lt;- function(df,cols){
   for (j in cols){
     for (i in 1:nrow(df)){
@@ -554,72 +554,72 @@ df&lt;-make.average.score(df, game_cols)</code></pre>
 </div>
 <div id="result" class="section level2">
 <h2>Result</h2>
-<pre class="r"><code>df[ ,c('name', 'states','points','score', 'opp_average')]</code></pre>
-<pre><code>##                           name states points score opp_average
-## 1                   GARY HUA       ON    6.0  1794        1605
-## 2            DAKSHESH DARURI       MI    6.0  1553        1469
-## 3               ADITYA BAJAJ       MI    6.0  1384        1563
-## 4        PATRICK H SCHILLING       MI    5.5  1716        1573
-## 5                 HANSHI ZUO       MI    5.5  1655        1500
-## 6                HANSEN SONG       OH    5.0  1686        1518
-## 7          GARY DEE SWATHELL       MI    5.0  1649        1372
-## 8           EZEKIEL HOUGHTON       MI    5.0  1641        1468
-## 9                STEFANO LEE       ON    5.0  1411        1523
-## 10                 ANVIT RAO       MI    5.0  1365        1554
-## 11   CAMERON WILLIAM MC LEMAN      MI    4.5  1712        1467
-## 12            KENNETH J TACK       MI    4.5  1663        1506
-## 13         TORRANCE HENRY JR       MI    4.5  1666        1497
-## 14              BRADLEY SHAW       MI    4.5  1610        1515
-## 15    ZACHARY JAMES HOUGHTON       MI    4.5  1220        1483
-## 16              MIKE NIKITIN       MI    4.0  1604        1385
-## 17        RONALD GRZEGORCZYK       MI    4.0  1629        1498
-## 18             DAVID SUNDEEN       MI    4.0  1600        1480
-## 19              DIPANKAR ROY       MI    4.0  1564        1426
-## 20               JASON ZHENG       MI    4.0  1595        1410
-## 21             DINH DANG BUI       ON    4.0  1563        1470
-## 22          EUGENE L MCCLURE       MI    4.0  1555        1300
-## 23                  ALAN BUI       ON    4.0  1363        1213
-## 24         MICHAEL R ALDRICH       MI    4.0  1229        1357
-## 25          LOREN SCHWIEBERT       MI    3.5  1745        1363
-## 26                   MAX ZHU       ON    3.5  1579        1506
-## 27            GAURAV GIDWANI       MI    3.5  1552        1221
-## 28                 SOFIA ADINA     MI    3.5  1507        1522
-## 29          CHIEDOZIE OKORIE       MI    3.5  1602        1313
-## 30        GEORGE AVERY JONES       ON    3.5  1522        1144
-## 31              RISHI SHETTY       MI    3.5  1494        1259
-## 32     JOSHUA PHILIP MATHEWS       ON    3.5  1441        1378
-## 33                   JADE GE       MI    3.5  1449        1276
-## 34    MICHAEL JEFFERY THOMAS       MI    3.5  1399        1375
-## 35          JOSHUA DAVID LEE       MI    3.5  1438        1149
-## 36             SIDDHARTH JHA       MI    3.5  1355        1388
-## 37      AMIYATOSH PWNANANDAM       MI    3.5   980        1384
-## 38                 BRIAN LIU       MI    3.0  1423        1539
-## 39             JOEL R HENDON       MI    3.0  1436        1429
-## 40              FOREST ZHANG       MI    3.0  1348        1390
-## 41       KYLE WILLIAM MURPHY       MI    3.0  1403        1248
-## 42                  JARED GE       MI    3.0  1332        1149
-## 43         ROBERT GLEN VASEY       MI    3.0  1283        1106
-## 44        JUSTIN D SCHILLING       MI    3.0  1199        1327
-## 45                 DEREK YAN       MI    3.0  1242        1152
-## 46  JACOB ALEXANDER LAVALLEY       MI    3.0   377        1357
-## 47               ERIC WRIGHT       MI    2.5  1362        1392
-## 48              DANIEL KHAIN       MI    2.5  1382        1355
-## 49          MICHAEL J MARTIN       MI    2.5  1291        1285
-## 50                SHIVAM JHA       MI    2.5  1056        1296
-## 51            TEJAS AYYAGARI       MI    2.5  1011        1356
-## 52                 ETHAN GUO       MI    2.5   935        1494
-## 53             JOSE C YBARRA       MI    2.0  1393        1345
-## 54               LARRY HODGE       MI    2.0  1270        1206
-## 55                 ALEX KONG       MI    2.0  1186        1406
-## 56              MARISA RICCI       MI    2.0  1153        1414
-## 57                MICHAEL LU       MI    2.0  1092        1363
-## 58              VIRAJ MOHILE       MI    2.0   917        1391
-## 59          SEAN M MC CORMICK      MI    2.0   853        1319
-## 60                JULIA SHEN       MI    1.5   967        1330
-## 61             JEZZEL FARKAS       ON    1.5   955        1327
-## 62             ASHWIN BALAJI       MI    1.0  1530        1186
-## 63      THOMAS JOSEPH HOSMER       MI    1.0  1175        1350
-## 64                    BEN LI       MI    1.0  1163        1263</code></pre>
+<pre class="r"><code>df[ ,c(&#39;name&#39;, &#39;states&#39;,&#39;points&#39;,&#39;score&#39;, &#39;opp_average&#39;)]</code></pre>
+<pre><code>##                          name states points score opp_average
+## 1                   GARY HUA      ON    6.0  1794        1605
+## 2            DAKSHESH DARURI      MI    6.0  1553        1469
+## 3               ADITYA BAJAJ      MI    6.0  1384        1563
+## 4        PATRICK H SCHILLING      MI    5.5  1716        1573
+## 5                 HANSHI ZUO      MI    5.5  1655        1500
+## 6                HANSEN SONG      OH    5.0  1686        1518
+## 7          GARY DEE SWATHELL      MI    5.0  1649        1372
+## 8           EZEKIEL HOUGHTON      MI    5.0  1641        1468
+## 9                STEFANO LEE      ON    5.0  1411        1523
+## 10                 ANVIT RAO      MI    5.0  1365        1554
+## 11   CAMERON WILLIAM MC LEMAN     MI    4.5  1712        1467
+## 12            KENNETH J TACK      MI    4.5  1663        1506
+## 13         TORRANCE HENRY JR      MI    4.5  1666        1497
+## 14              BRADLEY SHAW      MI    4.5  1610        1515
+## 15    ZACHARY JAMES HOUGHTON      MI    4.5  1220        1483
+## 16              MIKE NIKITIN      MI    4.0  1604        1385
+## 17        RONALD GRZEGORCZYK      MI    4.0  1629        1498
+## 18             DAVID SUNDEEN      MI    4.0  1600        1480
+## 19              DIPANKAR ROY      MI    4.0  1564        1426
+## 20               JASON ZHENG      MI    4.0  1595        1410
+## 21             DINH DANG BUI      ON    4.0  1563        1470
+## 22          EUGENE L MCCLURE      MI    4.0  1555        1300
+## 23                  ALAN BUI      ON    4.0  1363        1213
+## 24         MICHAEL R ALDRICH      MI    4.0  1229        1357
+## 25          LOREN SCHWIEBERT      MI    3.5  1745        1363
+## 26                   MAX ZHU      ON    3.5  1579        1506
+## 27            GAURAV GIDWANI      MI    3.5  1552        1221
+## 28       SOFIA ADINA STANESCU     MI    3.5  1507        1522
+## 29          CHIEDOZIE OKORIE      MI    3.5  1602        1313
+## 30        GEORGE AVERY JONES      ON    3.5  1522        1144
+## 31              RISHI SHETTY      MI    3.5  1494        1259
+## 32     JOSHUA PHILIP MATHEWS      ON    3.5  1441        1378
+## 33                   JADE GE      MI    3.5  1449        1276
+## 34    MICHAEL JEFFERY THOMAS      MI    3.5  1399        1375
+## 35          JOSHUA DAVID LEE      MI    3.5  1438        1149
+## 36             SIDDHARTH JHA      MI    3.5  1355        1388
+## 37      AMIYATOSH PWNANANDAM      MI    3.5   980        1384
+## 38                 BRIAN LIU      MI    3.0  1423        1539
+## 39             JOEL R HENDON      MI    3.0  1436        1429
+## 40              FOREST ZHANG      MI    3.0  1348        1390
+## 41       KYLE WILLIAM MURPHY      MI    3.0  1403        1248
+## 42                  JARED GE      MI    3.0  1332        1149
+## 43         ROBERT GLEN VASEY      MI    3.0  1283        1106
+## 44        JUSTIN D SCHILLING      MI    3.0  1199        1327
+## 45                 DEREK YAN      MI    3.0  1242        1152
+## 46  JACOB ALEXANDER LAVALLEY      MI    3.0   377        1357
+## 47               ERIC WRIGHT      MI    2.5  1362        1392
+## 48              DANIEL KHAIN      MI    2.5  1382        1355
+## 49          MICHAEL J MARTIN      MI    2.5  1291        1285
+## 50                SHIVAM JHA      MI    2.5  1056        1296
+## 51            TEJAS AYYAGARI      MI    2.5  1011        1356
+## 52                 ETHAN GUO      MI    2.5   935        1494
+## 53             JOSE C YBARRA      MI    2.0  1393        1345
+## 54               LARRY HODGE      MI    2.0  1270        1206
+## 55                 ALEX KONG      MI    2.0  1186        1406
+## 56              MARISA RICCI      MI    2.0  1153        1414
+## 57                MICHAEL LU      MI    2.0  1092        1363
+## 58              VIRAJ MOHILE      MI    2.0   917        1391
+## 59          SEAN M MC CORMICK     MI    2.0   853        1319
+## 60                JULIA SHEN      MI    1.5   967        1330
+## 61             JEZZEL FARKAS      ON    1.5   955        1327
+## 62             ASHWIN BALAJI      MI    1.0  1530        1186
+## 63      THOMAS JOSEPH HOSMER      MI    1.0  1175        1350
+## 64                    BEN LI      MI    1.0  1163        1263</code></pre>
 </div>
 </div>
 

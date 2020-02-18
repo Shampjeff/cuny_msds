@@ -16,6 +16,8 @@ library(RCurl)
 
 # Chess ELO Table - Clean and Extract
 
+_I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy_
+
 The crosstable information is stored in a `.txt` file and will be to scrubed of all formatting and presented in a data frame of the following columns
 
 Name, State, Points Scored, Prior Rank, Average Opponent Ranking
@@ -59,11 +61,10 @@ states<-unlist(str_extract_all(data, state_regex))
 states
 ```
 
-I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; his first name is Dinh Dang and last name is Bui, I wanted to be sure that was displayed correctly. 
+I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it's a very commmon Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player's full name
 
 ```{r}
-#
-name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*\\s|[:alpha:]+\\s[:alpha:]+"
+name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*"
 name<- unlist(str_extract_all(data, name_regex))
 name<- str_remove_all(name, "[:digit:]\\s\\|")
 name
@@ -109,6 +110,7 @@ make.game.outcome<- function(games_list, game_num){
 make.outcome.opp.data<- function(game_list,game_num){
     game_i<- make.game.outcome(game_list, game_num)
     game_opp<-game_i[[2]]
+    # Alternatively, the first element in this list stores the WLDHUBX game outcome
     outcome_opp<-cbind(game_opp)
   return(outcome_opp)
 }
@@ -134,7 +136,6 @@ cols<-cols[! cols %in% factors]
 cols <- cols[!is.na(cols)]
 df[,cols] <- apply(df[,cols], 2,
                     function(x) as.integer(as.character(x)))
-options(digits=2)
 df$points<-as.numeric(as.character(df$points))
 ```
 
@@ -172,23 +173,6 @@ df<-make.average.score(df, game_cols)
 ```{r}
 df[ ,c('name', 'states','points','score', 'opp_average')]
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

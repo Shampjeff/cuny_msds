@@ -76,7 +76,7 @@ So `fruits` is now a character vector. Nice.
 
 - "(.)(.)\\\2\\\1"
 
-**This creates two 'wildcard' characters and matches a repeat for the second item followed by a repeat of the first. **
+**This creates two 'wildcard' characters and matches a repeat for the second item followed by a repeat of the first.**
 **Example: in 'xloolz' this command would match 'lool'**
 
 - (..)\1
