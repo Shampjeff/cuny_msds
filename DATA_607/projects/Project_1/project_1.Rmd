@@ -30,7 +30,9 @@ First I am going to develop the regex expressions necessary to pull the desired 
 ### Initial Formatting Clean
 
 ```{r}
-data<- readLines("tournamentinfo.txt")
+data<-readLines(
+  'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt',
+  warn = F)
 data<- data[data != strrep("-",89)]
 data<-data[3:130]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))

@@ -379,10 +379,10 @@ summary {
 <p>First I am going to develop the regex expressions necessary to pull the desired information from the <code>.txt</code> file. Once I get the general information, I will use the data frame features of R to further clean and prepare the data in pursuit of the final goal.</p>
 <div id="initial-formatting-clean" class="section level3">
 <h3>Initial Formatting Clean</h3>
-<pre class="r"><code>data&lt;- readLines(&quot;tournamentinfo.txt&quot;)</code></pre>
-<pre><code>## Warning in readLines(&quot;tournamentinfo.txt&quot;): incomplete final line found on
-## &#39;tournamentinfo.txt&#39;</code></pre>
-<pre class="r"><code>data&lt;- data[data != strrep(&quot;-&quot;,89)]
+<pre class="r"><code>data&lt;-readLines(
+  'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt',
+  warn = F)
+data&lt;- data[data != strrep(&quot;-&quot;,89)]
 data&lt;-data[3:130]
 data&lt;-unlist(lapply(data, function(x) x[!x %in% &quot;&quot;]))
 data[1:10]</code></pre>
@@ -523,7 +523,7 @@ for (i in 1:length(games)){
                make.outcome.opp.data(games,6),
                make.outcome.opp.data(games,7)
 )
-factors&lt;-c(&#39;name&#39;, &#39;states&#39;, &#39;points&#39;)
+factors&lt;-c('name', 'states', 'points')
 cols&lt;- colnames(df)
 cols&lt;-cols[! cols %in% factors]
 cols &lt;- cols[!is.na(cols)]
@@ -531,8 +531,8 @@ df[,cols] &lt;- apply(df[,cols], 2,
                     function(x) as.integer(as.character(x)))
 df$points&lt;-as.numeric(as.character(df$points))</code></pre>
 <p>Now for each row I need to replace the opponent number with that opponents pre-tournament ranking.</p>
-<pre class="r"><code>game_cols&lt;- c(&#39;game_opp&#39;, &#39;game_opp.1&#39;, &#39;game_opp.2&#39;, &#39;game_opp.3&#39;,
-              &#39;game_opp.4&#39;, &#39;game_opp.5&#39;, &#39;game_opp.6&#39;)
+<pre class="r"><code>game_cols&lt;- c('game_opp', 'game_opp.1', 'game_opp.2', 'game_opp.3',
+              'game_opp.4', 'game_opp.5', 'game_opp.6')
 make.opp.scores&lt;- function(df,cols){
   for (j in cols){
     for (i in 1:nrow(df)){
@@ -554,7 +554,7 @@ df&lt;-make.average.score(df, game_cols)</code></pre>
 </div>
 <div id="result" class="section level2">
 <h2>Result</h2>
-<pre class="r"><code>df[ ,c(&#39;name&#39;, &#39;states&#39;,&#39;points&#39;,&#39;score&#39;, &#39;opp_average&#39;)]</code></pre>
+<pre class="r"><code>df[ ,c('name', 'states','points','score', 'opp_average')]</code></pre>
 <pre><code>##                          name states points score opp_average
 ## 1                   GARY HUA      ON    6.0  1794        1605
 ## 2            DAKSHESH DARURI      MI    6.0  1553        1469
