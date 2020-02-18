@@ -12,11 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE}
 library(tidyverse)
 library(RCurl)
-
 ```
 
 ```{r}
-# df<-read.csv('tournamentinfo.txt', header = TRUE)
+#df<-read.csv('tournamentinfo.txt', header = TRUE)
 # df<-df[df != strrep("-",89)]
 # df<-df[3:130]
 
@@ -24,20 +23,21 @@ library(RCurl)
 
 ```{r}
 # df<-str_extract_all(df, regex("\\b[^|[:blank:]]*([0-9]+([.][0-9]))*\\b", ignore_case=F, multiline=T))
-# df<-lapply(df, function(x) x[!x %in% ""])
+# df<-unlist(lapply(df, function(x) x[!x %in% ""]))
+# df
 ```
 
 
 ```{r}
 data<- readLines("tournamentinfo.txt")
-data<-str_extract_all(data, regex("\\b[^|-[:blank:]]*([0-9]+([.][0-9]))*\\b", ignore_case =FALSE, multiline = TRUE))
-data<-data[5:130]
+data<- data[data != strrep("-",89)]
+data<-data[3:130]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))
-data[700:1300]
+data[1:100]
 ```
 
 ```{r}
-uscf_regex<-"^[0-9]{8}$"
+uscf_regex<-"[0-9]{8}"
 uscf_id<-unlist(str_extract_all(data, uscf_regex))
 uscf_id
 ```
@@ -48,38 +48,78 @@ points<-unlist(str_extract_all(data, points_regex))
 points
 ```
 
+
 ```{r}
-state_regex<-"^[A-Z]{2}$"
+state_regex<-"\\s\\s[A-Z]{2}"
 states<-unlist(str_extract_all(data, state_regex))
 states
 ```
 
 ```{r}
-name_regex<-"[:alpha:]{3,}"
+name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]+\\s | [:alpha:]+\\s[:alpha:]+"
 name<- unlist(str_extract_all(data, name_regex))
+name<- str_remove_all(name, "[:digit:]\\s\\|")
 name
 ```
 
 
 ```{r}
-score_regex<-"^[:digit:]{4}$"
+score_regex<-"R:\\s*[:digit:]{3,4}"
 score<-unlist(str_extract_all(data, score_regex))
+score<-str_remove_all(score, "R:\\s")
 score
 ```
 
+```{r}
+games_regex<-"(\\|[WLDHUBX]\\s\\s.[:digit:]|\\|[HUBX]\\s\\s.[:blank:]){3,7}+"
+games<-unlist(str_extract_all(data, games_regex))
+games<- unlist(str_replace_all(games,"\\|", ","))
+games<- strsplit(games, ",")
+for (i in 1:length(games)){
+  games[[i]]<-games[[i]][2:length(games[[i]])]
+}
+```
 
+```{r}
+make.game.outcome<- function(games_list, game_num){
+  game_outcome<- rep(NA, 64)
+  game_op<- rep(NA, 64)
+  for (i in 1:length(games_list)){
+    game_outcome[i]<-str_extract(games_list[[i]][game_num], "[:alpha:]{1}")
+    game_op[i]<-str_extract(games_list[[i]][game_num], "[0-9]{1,2}")
+  }
+  result<-list(game_outcome, game_op)
+  return (result)
+}
+```
 
+```{r}
+make.outcome.opp.data<- function(game_list,game_num){
+    game_i<- make.game.outcome(game_list, game_num)
+    game_outcome<- game_i[[1]]
+    game_opp<-game_i[[2]]
+    outcome_opp<-cbind(game_outcome, game_opp)
+  return(outcome_opp)
+}
+```
 
-
-
-
-
-
-
+```{r}
+df<-data.frame(name, states, uscf_id, points, score, 
+               make.outcome.opp.data(games,1),
+               make.outcome.opp.data(games,2),
+               make.outcome.opp.data(games,3),
+               make.outcome.opp.data(games,4),
+               make.outcome.opp.data(games,5),
+               make.outcome.opp.data(games,6),
+               make.outcome.opp.data(games,7)
+)
+df
+```
 
 
 ```{r}
-col_names<-c('index','first_name','last_name', 'score', 'game_1_out', 'game_1_op','game_2_out','game_2_op', 'game_3_out', 'game_3_out', 'game_4_out', 'game_4_op', 'game_5_out', 'game_5_op', 'game_6_out', 'game_6_op', 'state', 'nonsense', 'nonsense_2', 'prev_elo', 'new_elo', 'nonsense_3', 'color_1','color_2','color_3','color_4', 'color_5','color_6')
+col_names<-c('game_1_out', 'game_1_op','game_2_out','game_2_op', 'game_3_out', 'game_3_out', 'game_4_out', 'game_4_op', 'game_5_out', 'game_5_op', 'game_6_out', 'game_6_op', 'games_7_out', 'game_7_op')
+
 ```
 
 
