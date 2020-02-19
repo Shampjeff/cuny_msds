@@ -16,7 +16,8 @@ library(RCurl)
 
 # Chess ELO Table - Clean and Extract
 
-_I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy_
+_I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy._
+_Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem._ 
 
 The crosstable information is stored in a `.txt` file and will be to scrubed of all formatting and presented in a data frame of the following columns
 
@@ -33,6 +34,7 @@ First I am going to develop the regex expressions necessary to pull the desired 
 data<-readLines(
   'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt',
   warn = F)
+# This is a base R function to remove the "-" in every two lines
 data<- data[data != strrep("-",89)]
 data<-data[3:130]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))
@@ -82,7 +84,7 @@ score
 This regex should pull in the outcomes of each match in the form, for example, "|W  39|..." for all seven rounds. 
 
 ```{r}
-games_regex<-"(\\|[WLDHUBX]\\s\\s.[:digit:]|\\|[HUBX]\\s\\s.[:blank:]){3,7}+"
+games_regex<-"\\|[:upper:]+.*[:digit:]{1,2}\\|"
 games<-unlist(str_extract_all(data, games_regex))
 games<- unlist(str_replace_all(games,"\\|", ","))
 games<- strsplit(games, ",")
@@ -91,15 +93,23 @@ for (i in 1:length(games)){
 }
 ```
 
-I will further scrub the matches to the individual Win, Loss, Draw, etc and the opponent number. The following functions separate and organize those results. 
+### Outcome and Opponent Values
+
+Below are two functions that work together to extract the outcome of each game per player and the rank of the opponent played. 
+`make.game.outcome` returns a list of the outcomes of one game for every player and the rank of the opponent played. 
+`make.outcome.opp.data` takes the output of `make.game.outcome` and returns a dataframe column for the rank of each oppoent played. It also stores the outcome of each game, if that might be needed in the future. 
+
+I will further scrub the matches to the individual Win, Loss, Draw, etc and the opponent number. The following functions separate and organize those results. Pulling out the game outcome was not required, but I wanted to extract and store in case of further analysis. 
 
 ```{r}
 make.game.outcome<- function(games_list, game_num){
   game_outcome<- rep(NA, 64)
   game_op<- rep(NA, 64)
   for (i in 1:length(games_list)){
+    # This pulls out the win, lose, draw, etc outcome
     game_outcome[i]<-str_extract(games_list[[i]][game_num],
-                                 "[:alpha:]{1}")
+                                 "[:alpha:]{1}") 
+    # This pulls out the opponent rank 
     game_op[i]<-str_extract(games_list[[i]][game_num],
                             "[0-9]{1,2}")
   }
@@ -124,24 +134,25 @@ The following builds the dataframe and recasts some of the columns as integers o
 
 ```{r}
 df<-data.frame(name, states, uscf_id, points, score, 
-               make.outcome.opp.data(games,1),
-               make.outcome.opp.data(games,2),
+               make.outcome.opp.data(games,1), # this make a column of the opponent played in game 1
+               make.outcome.opp.data(games,2), # game 2 - 7 follow below
                make.outcome.opp.data(games,3),
                make.outcome.opp.data(games,4),
                make.outcome.opp.data(games,5),
                make.outcome.opp.data(games,6),
                make.outcome.opp.data(games,7)
 )
-factors<-c('name', 'states', 'points')
+non_int<-c('name', 'states', 'points')
+# The following cast the player ranking values to integers and the point column to numeric. 
 cols<- colnames(df)
-cols<-cols[! cols %in% factors]
+cols<-cols[! cols %in% non_int]
 cols <- cols[!is.na(cols)]
 df[,cols] <- apply(df[,cols], 2,
                     function(x) as.integer(as.character(x)))
 df$points<-as.numeric(as.character(df$points))
 ```
 
-Now for each row I need to replace the opponent number with that opponents pre-tournament ranking. 
+Now for each row I need to replace the opponent number with that opponents pre-tournament ranking. The following function iterates through each column and all the rows and swaps the opponent rank with their respective pre-tournament score. 
 
 ```{r}
 game_cols<- c('game_opp', 'game_opp.1', 'game_opp.2', 'game_opp.3',
@@ -157,7 +168,7 @@ make.opp.scores<- function(df,cols){
 df<-make.opp.scores(df, game_cols)
 ```
 
-Once we have the scores in place, we can calculate the average opponent score for each player. 
+Once we have the scores in place, we can calculate the average opponent score for each player. The following function makes a new calculated column where is iterate through every row and sums the pre-tournament scores of each opponent divided by the total number of non-NA values, which is the total number of games played per player. 
 
 ```{r}
 make.average.score<- function(df, cols){
@@ -181,5 +192,22 @@ df_final
 ```{r}
 write.csv(df_final, "project_1_dataframe.csv")
 ```
+
+Lastly, I wanted to visualize who in this tournament played better ranked players than themselves. Chess ranks are gained by beating players better than yourself. The reward (in ranking) for beating a better player increases with the larger difference in rank between the two players. Below we can see who, on average, played better players than themselves and as such who had the most to gain from this tournament. Red is the opponent average rank and blue is the rank of the player. So places where red is higher than blue, that would be a player whose rank is lower than the average rank of their opponents. The bigger the gap in the colors, the more the player has to gain by winning. Conversely, if blue is higher than red, that player has a lot to loss in terms of rank if they lose. These possible gains are only meaningful if the player actually wins so know the total wins per player would be useful in this context.  
+
+```{r fig.width=10, fig.height=10}
+library(ggplot2)
+library(tidyr)
+ggplot(data = df_final, aes(x=name)) + 
+  geom_col(aes(x=name, y=score),position='dodge',
+           size=4,alpha=.8,fill='lightblue4') +
+  geom_col(aes(x=name, y=opp_average), position='dodge',
+           size=4, alpha=.2,fill='red') + 
+  coord_flip() + 
+  labs(x = "Score",color = "Legend")  
+```
+
+
+
 
 

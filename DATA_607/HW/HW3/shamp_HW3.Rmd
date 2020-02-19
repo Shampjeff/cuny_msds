@@ -72,20 +72,20 @@ So `fruits` is now a character vector. Nice.
 
 - (.)\1\1
 
-**This is a syntax error. There are no quotes. If it were, "(.)\1\1", it would match a \1 in the string.**
+**This is creating a singular group that is repeated twice so something like 'aaa' or 'bbb'.**
 
 - "(.)(.)\\\2\\\1"
 
-**This creates two 'wildcard' characters and matches a repeat for the second item followed by a repeat of the first.**
-**Example: in 'xloolz' this command would match 'lool'**
+**This creates two grouped characters and matches a repeat for the second item followed by a repeat of the first.**
+**Example: in "xloolz"" this command would match "lool".**
 
 - (..)\1
 
-**This is another syntax error. Again, no quotes. If there were quotes it would match any character that is in front of a \1. Example "That store has \1 a banh mi station!", would match the 's' in 'has' followed by the space.**
+**This creates a group of two that repeats one time. Example: 'abab' or 'xsxs'.**
 
 - "(.).\\\1.\\\1"
 
-**The creates a 'wildcard' item and any following character and matches the item again. It then matches any second character and repeats the original item a third time.**
+**The creates a grouped item and any following character and matches the item again. It then matches any second character and repeats the original item a third time.**
 **Example: in the string, 'basaxa' this command would match, 'asaxa' The item is 'a', any character, 'a', any character, 'a'.**
 
 - "(.)(.)(.).*\\\3\\\2\\\1"

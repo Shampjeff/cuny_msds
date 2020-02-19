@@ -1,0 +1,120 @@
+---
+title: 'Data 605 HW 4'
+author: "Jeff Shamp"
+date: "2/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem Set 1
+
+Starting with martix A as describe in the assignment. 
+
+```{r}
+A<- matrix(c(1,2,3,-1,0,4), byrow=T, nrow=2)
+A
+```
+
+Computing X and Y, $X=AA^{T}$ and $Y=A^{T}A$
+
+```{r}
+X<- A%*%t(A)
+Y<- t(A)%*%A
+```
+
+Using the built-in functions in R to compute the eigenvectors. Showing the eigen vectors and values of X first. 
+
+```{r}
+E_x<-eigen(X)
+E_y<-eigen(Y)
+E_x
+```
+
+And the eigen decomp for Y
+```{r}
+E_y
+```
+
+Indeed one the eigen values nearly zero for matrix $Y$. 
+
+Now using the `svd` function for A
+```{r}
+svd<-svd(A)
+svd
+```
+
+Let's compare this outputs to show that svd$v is an eigen vector of Y. 
+
+```{r}
+svd$v
+E_y$vectors[,1:2]
+```
+
+So the values are the same, but the signs are different in places but this likely due to the unit vector nature. 
+
+```{r}
+svd$u
+E_x$vectors
+```
+
+The same is true for the the eigen vector of Y and svd$u. 
+
+Now let's examine the squares of the eigen values of X and Y to the non-singular decomposition of A. 
+
+```{r}
+E_x$values
+E_y$values[1:2]
+```
+
+So we see that the non-zero eigen values of X and Y are the same. I'll take the square root of these values and compare them to svd$d
+
+```{r}
+sqrt_root_E_x<-sqrt(E_x$values)
+sqrt_root_E_x
+svd$d
+```
+
+Indeed we see they are the same. Great. 
+
+
+
+# Problem Set 2
+
+Build function to compute the inverse of a matrix. 
+
+This implementation requires that the matrix be square and full-rank. First I'm going to make a function that builds the Cofactor matrix. Secondly, I write the inverse function that returns the inverse a matrix by calling the function that makes the Cofactors. 
+
+```{r}
+make.cofactors <- function(mat) {
+  cofact <- mat 
+  for(i in 1:dim(mat)[1]){
+    for(j in 1:dim(mat)[2]){
+      cofact[i,j] <- (det(mat[-i,-j])*(-1)^(i+j)) 
+    }
+  }
+  return(cofact)
+}
+```
+
+Once we have the cofactor matrix we can easily compute the inverse
+
+```{r}
+myinverse<- function(mat){
+  C_t<-t(make.cofactors(mat))
+  return(C_t / det(mat))
+}
+A<- matrix(c(2,6,1,-3,0,5,5,4,-7), byrow=T, nrow=3)
+myinverse(A)
+```
+
+```{r}
+solve(A)
+```
+
+And we see that these are the same result. Great. 
+
+
+
