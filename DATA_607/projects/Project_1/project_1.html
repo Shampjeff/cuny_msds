@@ -554,7 +554,8 @@ df&lt;-make.average.score(df, game_cols)</code></pre>
 </div>
 <div id="result" class="section level2">
 <h2>Result</h2>
-<pre class="r"><code>df[ ,c('name', 'states','points','score', 'opp_average')]</code></pre>
+<pre class="r"><code>df_final&lt;-df[ ,c('name', 'states','points','score', 'opp_average')]
+df_final</code></pre>
 <pre><code>##                          name states points score opp_average
 ## 1                   GARY HUA      ON    6.0  1794        1605
 ## 2            DAKSHESH DARURI      MI    6.0  1553        1469
@@ -620,6 +621,7 @@ df&lt;-make.average.score(df, game_cols)</code></pre>
 ## 62             ASHWIN BALAJI      MI    1.0  1530        1186
 ## 63      THOMAS JOSEPH HOSMER      MI    1.0  1175        1350
 ## 64                    BEN LI      MI    1.0  1163        1263</code></pre>
+<pre class="r"><code>write.csv(df_final, &quot;project_1_dataframe.csv&quot;)</code></pre>
 </div>
 </div>
 

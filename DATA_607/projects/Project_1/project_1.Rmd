@@ -173,9 +173,13 @@ df<-make.average.score(df, game_cols)
 ## Result
 
 ```{r}
-df[ ,c('name', 'states','points','score', 'opp_average')]
+df_final<-df[ ,c('name', 'states','points','score', 'opp_average')]
+df_final
 ```
 
 
+```{r}
+write.csv(df_final, "project_1_dataframe.csv")
+```
 
 
