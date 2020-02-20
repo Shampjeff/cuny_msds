@@ -1,4 +1,4 @@
-# cuny_msds
+# CUNY MSDS
 CUNY SPS - MSDS program
 
 
