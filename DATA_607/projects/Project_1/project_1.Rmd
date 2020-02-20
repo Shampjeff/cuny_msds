@@ -16,10 +16,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(RCurl)
 ```
 
 # Chess ELO Table - Clean and Extract
-Using **tidyverse, ggplot2**
+Using **tidyverse, ggplot2, and RCurl**
 
 _I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy._
 _Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem._ 
