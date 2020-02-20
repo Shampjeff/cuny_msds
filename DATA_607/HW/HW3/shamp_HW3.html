@@ -1337,8 +1337,8 @@ head(df)</code></pre>
 <pre><code>## [1] &quot;[1] \&quot;bell pepper\&quot;  \&quot;bilberry\&quot;     \&quot;blackberry\&quot;   \&quot;blood orange\&quot;\n\n[5] \&quot;blueberry\&quot;    \&quot;cantaloupe\&quot;   \&quot;chili pepper\&quot; \&quot;cloudberry\&quot;  \n\n[9] \&quot;elderberry\&quot;   \&quot;lime\&quot;         \&quot;lychee\&quot;       \&quot;mulberry\&quot;    \n\n[13] \&quot;olive\&quot;        \&quot;salal berry\&quot;&quot;</code></pre>
 <p>Yikes. Let’s drop the <code>\</code> with <code>[ a-z]</code> and match it at least once with <code>+</code></p>
 <pre class="r"><code>str_view(data, &quot;[ a-z]+&quot;)</code></pre>
-<div id="htmlwidget-4d562aa0cb6f6db600ed" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-4d562aa0cb6f6db600ed">{"x":{"html":"<ul>\n  <li>[1]<span class='match'> <\/span>\"bell pepper\"  \"bilberry\"     \"blackberry\"   \"blood orange\"\n\n[5] \"blueberry\"    \"cantaloupe\"   \"chili pepper\" \"cloudberry\"  \n\n[9] \"elderberry\"   \"lime\"         \"lychee\"       \"mulberry\"    \n\n[13] \"olive\"        \"salal berry\"<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-bfefcec338db80e1bf4e" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bfefcec338db80e1bf4e">{"x":{"html":"<ul>\n  <li>[1]<span class='match'> <\/span>\"bell pepper\"  \"bilberry\"     \"blackberry\"   \"blood orange\"\n\n[5] \"blueberry\"    \"cantaloupe\"   \"chili pepper\" \"cloudberry\"  \n\n[9] \"elderberry\"   \"lime\"         \"lychee\"       \"mulberry\"    \n\n[13] \"olive\"        \"salal berry\"<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 <p>Now we can unlist and anchor with an empty string to get the spaces.</p>
 <pre class="r"><code>fruits&lt;-c(unlist(str_extract_all(data, &quot;\\b[ a-z]+\\b&quot;)))
 fruits[5:9]</code></pre>
