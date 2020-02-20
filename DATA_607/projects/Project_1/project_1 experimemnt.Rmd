@@ -37,11 +37,11 @@ First I am going to develop the regex expressions necessary to pull the desired 
 
 ```{r}
 data<-readLines(
-  'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt',
+  'USATE_crosstable.txt',
   warn = F)
 # This is a base R function to remove the "-" in every two lines
 data<- data[data != strrep("-",89)]
-data<-data[3:130]
+data<-data[3:length(data)]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))
 data[1:10]
 ```
@@ -54,7 +54,7 @@ Using regex to create vectors for data fields that will go into the data frame. 
 ```{r}
 uscf_regex<-"[0-9]{8}"
 uscf_id<-unlist(str_extract_all(data, uscf_regex))
-uscf_id
+length(uscf_id)
 ```
 
 The final score of each player at the end of the tournament. 
@@ -62,45 +62,47 @@ The final score of each player at the end of the tournament.
 ```{r}
 score_regex<-"[:digit:]\\.[:digit:]"
 score<-unlist(str_extract_all(data, score_regex))
-score
+length(score)
 ```
 
 The home state of each player.
 
 ```{r}
-state_regex<-"\\s\\s[A-Z]{2}"
+state_regex<-"\\s\\s.[A-Z]\\s\\|"
 states<-unlist(str_extract_all(data, state_regex))
-states
+length(states)
 ```
 
 I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it's a very commmon Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player's full name
 
 ```{r}
-name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*"
+name_regex<-"[0-9] \\| [:alpha:].*\\|*"
 name<- unlist(str_extract_all(data, name_regex))
 name<- str_remove_all(name, "[:digit:]\\s\\|")
-name
+length(name)
 ```
 
 The rank of each player is that player's USCF pre-touranment numerical value. The cross table also shows the player's new rank after the tournament. 
 
 ```{r}
-rank_regex<-"R:\\s*[:digit:]{3,4}"
+rank_regex<-"R:.*\\|"
 rank<-unlist(str_extract_all(data, rank_regex))
-rank<-str_remove_all(rank, "R:\\s")
-rank
+rank<-str_remove_all(rank, "R:")
+length(rank)
 ```
 
 This regex should pull in the outcomes of each match in the form, for example, "|W  39|..." for all seven rounds. 
 
 ```{r}
-games_regex<-"\\|[:upper:]+.*[:digit:]{1,2}\\|"
+games_regex<-"\\|([:upper:]|[:digit:]).*\\|"
 games<-unlist(str_extract_all(data, games_regex))
 games<- unlist(str_replace_all(games,"\\|", ","))
+games<- games[c(TRUE, FALSE)]
 games<- strsplit(games, ",")
 for (i in 1:length(games)){
-  games[[i]]<-games[[i]][2:length(games[[i]])]
+  games[[i]]<-games[[i]][3:length(games[[i]])]
 }
+length(games)
 ```
 
 ### Outcome and Opponent Values
@@ -113,8 +115,8 @@ I will further scrub the matches to the individual Win, Loss, Draw, etc and the 
 
 ```{r}
 make.game.outcome<- function(games_list, game_num){
-  game_outcome<- rep(NA, 64)
-  game_op<- rep(NA, 64)
+  game_outcome<- rep(NA, length(games_list))
+  game_op<- rep(NA, length(games_list))
   for (i in 1:length(games_list)){
     # This pulls out the win, loss outcome. I'm extracting it now for use later.
     game_outcome[i]<-str_extract(games_list[[i]][game_num],
@@ -123,7 +125,7 @@ make.game.outcome<- function(games_list, game_num){
     game_outcome[i]<-str_replace_all(game_outcome[i], "[L]{1}", "0")
     # This pulls out the opponent rank 
     game_op[i]<-str_extract(games_list[[i]][game_num],
-                            "[0-9]{1,2}")
+                            "[0-9]{1,}")
   }
   result<-list(game_outcome, game_op)
   return (result)
