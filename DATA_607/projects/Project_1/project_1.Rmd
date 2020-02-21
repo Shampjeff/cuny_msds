@@ -5,25 +5,26 @@ date: "2/13/2020"
 output:
   prettydoc::html_pretty:
     theme: tactile
-    highlight: github
+    
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+#highlight: github
 ```
 
 
 ```{r, include=FALSE}
 library(tidyverse)
 library(ggplot2)
-library(RCurl)
+library(kableExtra)
 ```
 
 # Chess ELO Table - Clean and Extract
-Using **tidyverse, ggplot2, and RCurl**
+Using **tidyverse, ggplot2, and kable**
 
 _I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy._
-_Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem._ 
+_Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem. Lastly, Sam Bellows was generous enough to provide a real, recent chess cross table from a tournament he competed in so that I could test the robustness on my code._ 
 
 The crosstable information is stored in a `.txt` file and will be to scrubed of all formatting and presented in a data frame of the following columns
 
@@ -36,13 +37,20 @@ First I am going to develop the regex expressions necessary to pull the desired 
 
 ### Initial Formatting
 
+There is an alternative link provided below to a real chess ELO table from a recent tournament. The table is much less well-organized and has several missing values. This code will also correctly run that data. To view those results, please use the second link labeled `challenge_data`. 
+
+
 ```{r}
+original_data<-'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt'
+
+challenge_data<-'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/USATE_crosstable.txt'
+
 data<-readLines(
-  'https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/projects/Project_1/tournamentinfo.txt',
+  original_data,
   warn = F)
 # This is a base R function to remove the "-" in every two lines
 data<- data[data != strrep("-",89)]
-data<-data[3:130]
+data<-data[1:length(data)]
 data<-unlist(lapply(data, function(x) x[!x %in% ""]))
 data[1:10]
 ```
@@ -55,7 +63,7 @@ Using regex to create vectors for data fields that will go into the data frame. 
 ```{r}
 uscf_regex<-"[0-9]{8}"
 uscf_id<-unlist(str_extract_all(data, uscf_regex))
-uscf_id
+uscf_id[1:10]
 ```
 
 The final score of each player at the end of the tournament. 
@@ -63,45 +71,56 @@ The final score of each player at the end of the tournament.
 ```{r}
 score_regex<-"[:digit:]\\.[:digit:]"
 score<-unlist(str_extract_all(data, score_regex))
-score
+score[1:10]
 ```
 
 The home state of each player.
 
 ```{r}
-state_regex<-"\\s\\s[A-Z]{2}"
+state_regex<-"\\s\\s.*\\|\\s[:digit:]{2,}"
 states<-unlist(str_extract_all(data, state_regex))
-states
+states<-str_remove_all(states, "\\|.*")
+states[1:10]
 ```
 
 I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it's a very commmon Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player's full name
 
 ```{r}
-name_regex<-"[0-9] \\| [:alpha:]+\\s[:alpha:]+\\s?([:alpha:]+\\s)[:alpha:]*"
+name_regex<-"[0-9] \\| [:alpha:].*\\|*"
 name<- unlist(str_extract_all(data, name_regex))
 name<- str_remove_all(name, "[:digit:]\\s\\|")
-name
+name<- str_remove_all(name, "\\|.*")
+name[1:10]
 ```
 
-The rank of each player is that player's USCF pre-touranment numerical value. The cross table also shows the player's new rank after the tournament. 
+The rank of each player is that player's USCF pre-touranment numerical value. The cross table also shows the player's new rank after the tournament. One thing I learned from the cross table from a recent tournament is that is it very helpful to start with a large string extract command and then iterative break it down. Below is an example of that procedure where I start with a long string line (everything after a "/") and progressively take it down to the pre-tournament rank. This way I catch all the provisional ranks, as well as any non-exisitant rankings. 
 
 ```{r}
-rank_regex<-"R:\\s*[:digit:]{3,4}"
+rank_regex<-"/.*\\|"
 rank<-unlist(str_extract_all(data, rank_regex))
-rank<-str_remove_all(rank, "R:\\s")
-rank
+rank<-str_remove_all(rank, "->.*")
+rank<-str_remove_all(rank, "R:")
+rank<-str_remove_all(rank, "[P].*")
+rank<-str_remove_all(rank, "/")
+rank<-str_remove_all(rank, "\\D")
+rank<-rank[2:length(rank)]
+rank[1:10]
 ```
 
-This regex should pull in the outcomes of each match in the form, for example, "|W  39|..." for all seven rounds. 
+This regex should pull in the outcomes of each match in the form, for example, "|W  39|..." for all seven rounds. Again, it starts with a very long string line and progressively breaks it down to just outcome and opponent number. 
 
 ```{r}
-games_regex<-"\\|[:upper:]+.*[:digit:]{1,2}\\|"
-games<-unlist(str_extract_all(data, games_regex))
+games_regex<-"\\|([:upper:]|[:digit:]).*\\|"
+games<-unlist(str_extract_all(data, name_regex))
+games<-str_remove_all(games, "[:digit:]\\s\\|")
+games<-str_remove_all(games, "\\s[:alpha:]+")
+games<-str_remove_all(games, "[:blank:]+\\|[:digit:][.][:digit:]")
 games<- unlist(str_replace_all(games,"\\|", ","))
 games<- strsplit(games, ",")
 for (i in 1:length(games)){
-  games[[i]]<-games[[i]][2:length(games[[i]])]
-}
+   games[[i]]<-games[[i]][2:length(games[[i]])]
+ }
+games[1:2]
 ```
 
 ### Outcome and Opponent Values
@@ -114,8 +133,8 @@ I will further scrub the matches to the individual Win, Loss, Draw, etc and the 
 
 ```{r}
 make.game.outcome<- function(games_list, game_num){
-  game_outcome<- rep(NA, 64)
-  game_op<- rep(NA, 64)
+  game_outcome<- rep(NA, length(games_list))
+  game_op<- rep(NA, length(games_list))
   for (i in 1:length(games_list)){
     # This pulls out the win, loss outcome. I'm extracting it now for use later.
     game_outcome[i]<-str_extract(games_list[[i]][game_num],
@@ -124,7 +143,7 @@ make.game.outcome<- function(games_list, game_num){
     game_outcome[i]<-str_replace_all(game_outcome[i], "[L]{1}", "0")
     # This pulls out the opponent rank 
     game_op[i]<-str_extract(games_list[[i]][game_num],
-                            "[0-9]{1,2}")
+                            "[0-9]{1,}")
   }
   result<-list(game_outcome, game_op)
   return (result)
@@ -195,7 +214,9 @@ df$opp_average<- as.integer(rowMeans(df[,game_cols], na.rm=T))
 
 ```{r}
 df_final<-df[ ,c('name', 'states','score','rank', 'opp_average')]
-df_final
+df_final %>%
+  kable() %>%
+  kable_styling()
 ```
 
 
@@ -205,20 +226,19 @@ write.csv(df_final, "project_1_dataframe.csv")
 
 ## Data Visualization
 
-Lastly, I wanted to visualize who in this tournament played better ranked players than themselves. Chess ranks are gained by beating players better than yourself. The reward (in ranking) for beating a better player increases with the larger difference in rank between the two players. Below we can see who, on average, played better players than themselves and as such who had the most to gain from this tournament. Red is the opponent average rank and blue is the rank of the player. So places where red is higher than blue, that would be a player whose rank is lower than the average rank of their opponents. The bigger the gap in the colors, the more the player has to gain by winning. Conversely, if blue is higher than red, that player has a lot to lose in terms of rank if they lose. These possible gains are only meaningful if the player actually wins so I added the total wins to the end of the plot. 
+Lastly, I wanted to visualize who in this tournament played better ranked players than themselves. Chess ranks are gained by beating players better than yourself. The reward (in ranking) for beating a better player increases with the larger difference in rank between the two players. Below we can see who, on average, played better players than themselves and as such who had the most to gain from this tournament. Red is the opponent average rank and blue is the rank of the player. So places where red is higher than blue would be a player whose rank is lower than the average rank of their opponents. The bigger the gap in the colors, the more the player has to gain by winning. Conversely, if blue is higher than red, that player has a lot to lose in terms of rank for each match loss. These possible gains are only meaningful if the player actually wins so I added the total wins to the end of the plot. 
 
 We see that there are several players who, on average, played and beat higher ranked opponents. Aditya Bajaj, Anvit Rao, and Stefano Lee did very well this tournament as they won many games against better ranked players. Where as Loren Schweibert had only three wins against lower ranked players (on average) and Ashwin Balaji had only one win against lower ranked players. 
 
 ```{r fig.width=10, fig.height=10}
-# Using ggplot2
-ggplot(data = df, aes(x=name)) + 
+ggplot(data = df, aes(x=name)) +
   geom_col(aes(x=reorder(name, rank), y=rank),position='dodge',
            size=4,alpha=.8,fill='lightblue4') +
   geom_col(aes(x=name, y=opp_average), position='dodge',
            size=4, alpha=.2,fill='red') +
   coord_flip() +
   geom_text(aes(label = total_wins, y=rank, angle=270), vjust=-1) +
-  labs(y = "Ranking",x ="Player",color = "Legend")  
+  labs(y = "Ranking",x ="Player",color = "Legend")
 ```
 
 
