@@ -1,27 +1,24 @@
 ---
 title: "Project 1 Chess Table"
 author: "Jeff Shamp"
-date: "2/13/2020"
+date: "2/21/2020"
 output:
   prettydoc::html_pretty:
     theme: tactile
-    
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-#highlight: github
 ```
 
 
 ```{r, include=FALSE}
 library(tidyverse)
 library(ggplot2)
-library(kableExtra)
 ```
 
 # Chess ELO Table - Clean and Extract
-Using **tidyverse, ggplot2, and kable**
+Using **tidyverse, ggplot2, and DT**
 
 _I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy._
 _Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem. Lastly, Sam Bellows was generous enough to provide a real, recent chess cross table from a tournament he competed in so that I could test the robustness on my code._ 
@@ -214,9 +211,11 @@ df$opp_average<- as.integer(rowMeans(df[,game_cols], na.rm=T))
 
 ```{r}
 df_final<-df[ ,c('name', 'states','score','rank', 'opp_average')]
-df_final %>%
-  kable() %>%
-  kable_styling()
+DT::datatable(df_final, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
 ```
 
 
@@ -230,15 +229,16 @@ Lastly, I wanted to visualize who in this tournament played better ranked player
 
 We see that there are several players who, on average, played and beat higher ranked opponents. Aditya Bajaj, Anvit Rao, and Stefano Lee did very well this tournament as they won many games against better ranked players. Where as Loren Schweibert had only three wins against lower ranked players (on average) and Ashwin Balaji had only one win against lower ranked players. 
 
-```{r fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=12}
 ggplot(data = df, aes(x=name)) +
-  geom_col(aes(x=reorder(name, rank), y=rank),position='dodge',
-           size=4,alpha=.8,fill='lightblue4') +
-  geom_col(aes(x=name, y=opp_average), position='dodge',
-           size=4, alpha=.2,fill='red') +
+  geom_col(aes(x=reorder(name, rank), y=rank, color='rank' ),position='dodge',
+           size=2,alpha=.5, fill='lightblue') +
+  geom_col(aes(x=name, y=opp_average, color='opponent average'), position='dodge',
+           size=2, alpha=.3, fill='red') +
+  geom_text(aes(label = total_wins, y=rank, angle=270), vjust=-1, fontface="bold",size=4) +
   coord_flip() +
-  geom_text(aes(label = total_wins, y=rank, angle=270), vjust=-1) +
-  labs(y = "Ranking",x ="Player",color = "Legend")
+  labs(y = "Ranking",x ="Player", color="legend") +
+  theme(legend.position = "top") 
 ```
 
 
