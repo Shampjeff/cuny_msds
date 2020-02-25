@@ -21,9 +21,9 @@ library(ggplot2)
 Using **tidyverse, ggplot2, and DT**
 
 _I collaborated with Neil Shah on this project for some of the regex statements as well as general cleaning strategy._
-_Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem. Lastly, Sam Bellows was generous enough to provide a real, recent chess cross table from a tournament he competed in so that I could test the robustness on my code._ 
+_Once I completed this project I did a code review with Angel Claudio to see how we each approached the problem. Lastly, Sam Bellows was generous enough to provide a real, recent chess cross table from a tournament he competed in so that I could test the robustness of my code._ 
 
-The crosstable information is stored in a `.txt` file and will be to scrubed of all formatting and presented in a data frame of the following columns
+The crosstable information is stored in a `.txt` file and will be scrubbed of all formatting and presented in a data frame of the following columns:
 
 Name, State, Points Scored, Prior Rank, Average Opponent Ranking
 
@@ -80,7 +80,7 @@ states<-str_remove_all(states, "\\|.*")
 states[1:10]
 ```
 
-I wanted to be sure to get everyones full name. Many players had multiple names and I know how annoying it is to see everyone with only first and last name have there names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it's a very commmon Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player's full name
+I wanted to be sure to get everyone's full name. Many players had multiple names, and I know how annoying it is to see everyone with only first and last names have their names displayed but not the person with three (or more). For example, the player Dinh Dang Bui; Bui is likely the last name (it's a very common Vietnamese last name) and Dinh Dang would be the first name. I want to capture this player's full name
 
 ```{r}
 name_regex<-"[0-9] \\| [:alpha:].*\\|*"
@@ -90,7 +90,7 @@ name<- str_remove_all(name, "\\|.*")
 name[1:10]
 ```
 
-The rank of each player is that player's USCF pre-touranment numerical value. The cross table also shows the player's new rank after the tournament. One thing I learned from the cross table from a recent tournament is that is it very helpful to start with a large string extract command and then iterative break it down. Below is an example of that procedure where I start with a long string line (everything after a "/") and progressively take it down to the pre-tournament rank. This way I catch all the provisional ranks, as well as any non-exisitant rankings. 
+The rank of each player is that player's USCF pre-touranment numerical value. The cross table also shows the player's new rank after the tournament. One thing I learned from the cross table from a recent tournament is that it is very helpful to start with a large string extract command and then iteratively break it down. Below is an example of that procedure where I start with a long string line (everything after a "/") and progressively take it down to the pre-tournament rank. This way I catch all the provisional ranks, as well as any non-existent rankings. 
 
 ```{r}
 rank_regex<-"/.*\\|"
@@ -126,7 +126,7 @@ Below are two functions that work together to extract the outcome of each game p
 `make.game.outcome` returns a list of the outcomes of one game for every player and the rank of the opponent played. 
 `make.outcome.opp.data` takes the output of `make.game.outcome` and returns a dataframe column for the rank of each oppoent played. It also stores the outcome of each game, if that might be needed in the future. 
 
-I will further scrub the matches to the individual Win, Loss, Draw, etc and the opponent number. The following functions separate and organize those results. Pulling out the game outcome was not required, but I wanted to extract and store in for further analysis. 
+I will further scrub the matches to the individual Win, Loss, Draw, etc and the opponent number. The following functions separate and organize those results. Pulling out the game outcome was not required, but I wanted to extract and store it for further analysis. 
 
 ```{r}
 make.game.outcome<- function(games_list, game_num){
@@ -181,7 +181,7 @@ df[,cols] <- apply(df[,cols], 2,
 df$score<-as.numeric(as.character(df$score))
 ```
 
-Now for each row I need to replace the opponent number with that opponents pre-tournament ranking. The following function iterates through each column and all the rows and swaps the opponent number with their respective pre-tournament rank. 
+Now for each row I need to replace the opponent number with that opponent's pre-tournament ranking. The following function iterates through each column and all the rows and swaps the opponent number with their respective pre-tournament rank. 
 
 ```{r}
 game_cols<- c('game_opp', 'game_opp.1', 'game_opp.2', 'game_opp.3',
@@ -227,7 +227,7 @@ write.csv(df_final, "project_1_dataframe.csv")
 
 Lastly, I wanted to visualize who in this tournament played better ranked players than themselves. Chess ranks are gained by beating players better than yourself. The reward (in ranking) for beating a better player increases with the larger difference in rank between the two players. Below we can see who, on average, played better players than themselves and as such who had the most to gain from this tournament. Red is the opponent average rank and blue is the rank of the player. So places where red is higher than blue would be a player whose rank is lower than the average rank of their opponents. The bigger the gap in the colors, the more the player has to gain by winning. Conversely, if blue is higher than red, that player has a lot to lose in terms of rank for each match loss. These possible gains are only meaningful if the player actually wins so I added the total wins to the end of the plot. 
 
-We see that there are several players who, on average, played and beat higher ranked opponents. Aditya Bajaj, Anvit Rao, and Stefano Lee did very well this tournament as they won many games against better ranked players. Where as Loren Schweibert had only three wins against lower ranked players (on average) and Ashwin Balaji had only one win against lower ranked players. 
+We see that there are several players who, on average, played and beat higher ranked opponents. Aditya Bajaj, Anvit Rao, and Stefano Lee did very well this tournament as they won many games against better ranked players, whereas Loren Schweibert had only three wins against lower ranked players (on average) and Ashwin Balaji had only one win against lower ranked players. 
 
 ```{r fig.width=10, fig.height=12}
 ggplot(data = df, aes(x=name)) +
