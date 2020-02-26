@@ -82,7 +82,8 @@ $N(\mu = 4313, \sigma = 583), N(\mu = 5261, \sigma = 807)$
 The Z-score are the amount of distance from the mean each time relates to. 
 
 For Leo: $Z=\frac{4948-4313}{583} = 1.089$
-MAry: $Z = \frac{5513 - 5261}{807} = 0.3122$
+
+Mary: $Z = \frac{5513 - 5261}{807} = 0.3122$
 
 (c) Did Leo or Mary rank better in their respective groups? Explain your reasoning.
 
@@ -129,7 +130,7 @@ One sd above the mean would be 66.1 and there are only 4 more observations beyon
 
 (b) Do these data appear to follow a normal distribution? Explain your reasoning using the graphs provided below.
 
-The qq plot looks pretty good and the data seem to follow the 68-95 rule. Also the histogram appears to be normal enough with boxes both outside of the curve and below the same curve. Looking at the qqnormsim is see that a random sample of normal data looks very much in line with the qq plot we are given. 
+The qq plot looks pretty good and the data seem to follow the 68-95 rule. Also the histogram appears to be normal enough with boxes both outside of the curve and below the same curve. Looking at the qqnormsim we see that a random sample of normal data looks very much in line with the qq plot we are given. 
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.show="hold", out.width="50%", fig.height=3}
@@ -165,6 +166,7 @@ DATA606::qqnormsim(heights)
 
 Geometric probability.
 $p*(1-p)^{n-1}$
+
 $0.02 * (1 - 0.02)^{9} = 0.0166$ or $1.66\%$
 
 (b) What is the probability that the machine produces no defective transistors in a batch of 100?
@@ -175,7 +177,7 @@ $0.02 * (1-0.02)^{100} = 0.00266$ or $0.266\%$
 (c) On average, how many transistors would you expect to be produced before the first with a defect? What is the standard deviation?
 
 The mean for geometric probability is $\mu = \frac{1}{p}$ so $\mu = \frac{1}{0.02} = 50$. The standard deviation is $\sigma = \sqrt(\frac{1-p}{p^{2}})$, which is 
-$\sigma = \sqrt(\frac{1-0.02}{0.02^{2}}) = 49.49$. Given these equations, the standard deviation with always be very close in value to the mean. That kind of makes me think that the mean and sd are not so meaningful. 
+$\sigma = \sqrt(\frac{1-0.02}{0.02^{2}}) = 49.49$. Given these equations, the standard deviation with always be very close in value to the mean. That kind of makes me think that the mean and sd are not so meaningful. A plot of those equations is below, very confused as to how to interpret this. 
 
 
 (d) Another machine that also produces transistors has a 5% defective rate where each transistor
@@ -236,7 +238,7 @@ It is the same probability of completing any successful serve, i.e. 15%.
 
 (c) Even though parts (a) and (b) discuss the same scenario, the probabilities you calculated should be different. Can you explain the reason for this discrepancy?
 
-The events are independent. for part (b) we are talking about a singular, independent event. We are given the probability for this. In part (a) we are to find the probability of successful serves in a given number of the attemps. This requires considering all the possible ways to have three successful serves that terminate on the 10th attempt. 
+The events are independent. for part (b) we are talking about a singular, independent event. We are given the probability for this. In part (a) we are to find the probability of successful serves in a given number of the attempts. This requires considering all the possible ways to have three successful serves that terminate on the 10th attempt. 
 
 
 
