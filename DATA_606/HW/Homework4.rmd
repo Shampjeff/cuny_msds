@@ -190,8 +190,10 @@ Same as above, different numbers. $\mu = \frac{1}{p} = 20$ transistors before a 
 
 It is...geometric. y ~ 1/x
 
-```{r}
-x<- seq(0,1,length.out = 100)
+The plot of $\frac{1}{p}$ and $\sigma = \sqrt(\frac{1-p}{p^{2}})$ below. See there is some separation between these functions when zoomed in, but the values are very close to each other. I understand the point from the meetup about the variance being high for this kind of distribution, but I am struggling to see the value of mean and sd for geometric probability if the sd is always nearly equal to the expected value. 
+
+```{r, results='hide'}
+x<- seq(0.1,1.5,length.out = 100)
 plot(x, (1/x), col="red") 
 points(x, sqrt((1-x)/x^2), col="green")
 ```

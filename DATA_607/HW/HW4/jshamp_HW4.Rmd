@@ -1,0 +1,197 @@
+---
+title: "Data 607 HW4 - tidy data"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# Task - tidy the data
+
+For this assignment we are to load in a `.csv` file with the data shown from Blackboard and tidy the data from wide to long form using `tidyr` and `dplyr`. Then perform an analysis on flight delays. 
+
+## Load data
+
+The `.csv` file is on github
+
+```{r, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(RCurl)
+```
+
+Loading **tidyr, dplyr, ggplot2, stringr, RCurl**
+
+```{r}
+d<-getURL(
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW4/flights%20sample%20-%20data%20606%20-%20Sheet1.csv")
+df<-read.csv(text=d)
+df[2,"X"]<-"ALASKA"  # Manual assignment of airline names to blank spaces. 
+df[5, "X"]<-"AM WEST"
+
+DT::datatable(df, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+I don't like having to replace the row names manually, but I could not find an automated way to do this. 
+
+Above is the raw, untidy data. At first, I'm going to do the following: remove the empty row in original, gather by cities and name them, rename the aribitary columns given by read.csv, change factors to characters, remove the commas in some of the arrival values, and cast time variables as numerics.
+
+```{r}
+df<-df %>%
+      drop_na() %>%                
+      gather(city, occur, Los.Angeles:Seattle) %>%
+      rename(airline=X, status=X.1) %>%
+      mutate_if(is.factor, as.character) %>%
+      mutate(occur = str_remove_all(occur, "[,]")) %>%
+      mutate_at(.vars = vars(occur), .funs = as.numeric)
+
+DT::datatable(df, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+This makes the data pretty well tidy. The fill function still have same features to be desired, but this is a good start. 
+
+## Delay to On-Time Ratio
+
+I'd like to start by looking at the ratio of delays to on-time arrivals for each city. Perhaps there are some stand out values based on city. 
+
+```{r}
+city_summary<- df %>%
+  group_by(status, city) %>%
+  summarise(avg = mean(occur),
+            min = min(occur),
+            max = max(occur)
+            ) %>%
+  arrange(status)
+
+DT::datatable(city_summary, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+ 
+ 
+Here we have some initial insights into which cities have on time and delayed flights. Right away, I would like to know the proportion of delayed to on-time for each city. San Diego has the lowest average delayed, but lowest averge on time, it would be good to know if that is proportionally better than LAX. My approach here is to aggregate the delayed flights and on-time flights by city and create a column that is a simple ratio of delayed to on-time. 
+
+
+```{r}
+delay_total<- df %>%
+  select(status, city, occur)%>%
+  filter(status == "delayed") %>%
+  group_by(city) %>%
+  summarise(total = sum(occur)) # delays by city
+
+ontime_total<- df %>%
+  select(status, city, occur)%>%
+  filter(status == "on time") %>%
+  group_by(city) %>%
+  summarise(total = sum(occur)) # on-time by city
+
+totals_df<-left_join(delay_total, ontime_total, by="city") %>%
+  mutate(proportion = total.x / total.y)
+
+city_summary<- full_join(city_summary, totals_df, by ="city")
+city_summary<- city_summary %>%
+   select(city, proportion, avg, min, max) %>%
+   arrange(proportion) %>%
+   rename(delay_ontime_percent=proportion)
+
+DT::datatable(city_summary, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+So as a city Phoenix has the best delayed to on-time percent and San Francisco had the worst. 
+
+
+```{r}
+ggplot(data = city_summary) +
+  geom_col(aes(x=reorder(city, delay_ontime_percent),y=delay_ontime_percent), position = "dodge", fill="lightblue3") +
+  labs(x = "city",y= "delayed to on-time ratio")
+```
+
+
+Now that the delayed to on-time ratio is of a similar scale and per city, we see that San Francisco is significantly different than the other cities. Maybe there is something odd about SF in regards to one (or both) of these airlines. We will keep this in mind when after looking at delays vs on-time for our two airlines. 
+
+
+## Airline Delays vs On-Time
+
+Let's look at the delays vs on-time arrivals as percentage of the total flights for each carrier. Again, we are standardizing the values with percent and standardizing y-axis scales on the plots. 
+
+```{r}
+ak_total<-df %>%          # gathering total number of flight per airline
+  group_by(airline) %>%
+  filter(airline == "ALASKA") %>%
+  summarise(total_flight = sum(occur))
+am_total<-df %>%
+  group_by(airline) %>%
+  filter(airline == "AM WEST") %>%
+  summarise(total_flight = sum(occur))
+
+ak_df<- df %>%            # calculating percent delay or on-time 
+  filter(airline == "ALASKA") %>%
+  mutate(occur, percent_occur = 100*round(occur/ak_total$total_flight,3))
+am_df<- df %>%
+  filter(airline == "AM WEST") %>%
+  mutate(occur, percent_occur = 100*round(occur/am_total$total_flight,3))
+```
+
+
+```{r}
+ggplot(data = ak_df) + 
+  geom_col(
+           aes(reorder(x=city, percent_occur), y=percent_occur,
+           fill=status), 
+           position = "dodge", 
+           alpha = 0.5
+           ) +
+  ylim(0,70)+
+  labs(x="city", y="percent of flights", title = "Alaska Airline Flight Status")
+ggplot(data = am_df) + 
+  geom_col(
+           aes(reorder(x=city, percent_occur), y=percent_occur,
+           fill=status), 
+           position = "dodge", 
+           alpha=0.5)+
+  ylim(0,70)+
+  labs(x="city", y="percent of flights", title = "AM WEST Airline Flight Status")
+```
+
+
+Looking at these graphs we see that most cities have at least one airline that has a large gap in on-time vs delay, except San Francisco. SF has a narrow margin in delays to on-time for AM WEST. For Alaska, SF has a nice gap between these values but nothing major (like Seattle). Thus, it maintains the highest delayed to on-time ratio. Additionally, when we look that the percentages for on-time and delay on a standard y-axis scale, we see that it appears Alaska airlines have a higher percent of delays, but it is not super clear given that Alaska's delays are near zero for San Diego and Phoenix, but higher in LA, SF, and Seattle. Let's look at the sum of the percentages for on-time and delay. 
+
+
+```{r}
+DT::datatable(cbind(
+am_df %>%
+  group_by(status) %>%
+  summarise(on_time_percent_AM = sum(percent_occur)),
+ak_df %>%
+  group_by(status) %>%
+  summarise(on_time_percent_AK = sum(percent_occur))
+), 
+ extensions = c('FixedColumns',"FixedHeader"),
+  options = list(scrollX = TRUE, 
+                 paging=TRUE,
+                 fixedHeader=TRUE))
+
+```
+
+Indeed we see that Alaska airlines is a bit higher in percent delayed. 
+

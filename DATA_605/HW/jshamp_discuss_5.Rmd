@@ -1,0 +1,45 @@
+title: "Data 605 HW 5"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::material:
+    highlight: kate
+---
+
+
+```{r setup, echo=FALSE, cache=FALSE}
+library(knitr)
+library(rmdformats)
+## Global options
+options(max.print="75")
+opts_knit$set(width=75)
+```
+
+## Problem Set 1
+
+<br>
+Choose independently two numbers B and C at random from the interval [0, 1] with
+uniform density. Prove that B and C are proper probability distributions.
+Note that the point (B,C) is then chosen at random in the unit square.
+
+For this first task I am going to build a simulation in R and run thousands of trials rather than write out integrals in Latex. 
+
+```{r}
+B<- runif(10000, min=0, max=1)
+C<- runif(10000, min= 0, max=1)
+```
+
+This should give us what we want. If you do not trust your machine overloads, then we can examine the data a bit to satisfy ourselves B and C are $[0,1]$. Since C and B are created the same way, if it works for B, then it should work for C as well. 
+
+```{r}
+B_0<-sum(B < 0)
+B_1<-sum(B > 1)
+print(paste("number of values less than 0:", B_0))
+print(paste("number of values greater than 1:", B_1))
+```
+
+Also we can sample these vectors easily.
+```{r}
+sample(C, size = 20)
+```
+
+I'm convinced, but does anyone have a better way to compare these values with eye-balling it? Or a more rigorous way to show that B and C are "proper probability distributions" ?
