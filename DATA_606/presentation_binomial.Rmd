@@ -1,0 +1,39 @@
+---
+title: "606 presentation - probability model"
+author: "Jeff Shamp"
+date: "2/27/2020"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Problem - Create A Probability Model
+
+**4.35 Roulette winnings.** In the game of roulette, a wheel is spun and you place bets on where it will stop. One popular bet is that it will stop on a red slot; such a bet has an 18/38 chance of winning. If it stops on red, you double the money you bet. If not, you lose the money you bet. Suppose you play 3 times, each time with a $1 bet. Let Y represent the total amount won or lost. Write a probability model for Y.
+
+- Binomial $\binom{n}{k}(p)^{k}(1-p)^{n-k}$
+
+## Ways To Win
+
+- 0 wins:  Y = -3 <br>
+  $\binom{3}{0}(\frac{18}{38})^{0}(\frac{20}{38})^{3} = 14.5\%$
+  
+- 1 win: Y= 0  - break even! <br>
+  $\binom{3}{1}(\frac{18}{38})^{1}(\frac{20}{38})^{2} = 39.3\%$
+  
+- 2 wins: Y = 3 <br>
+  $\binom{3}{2}(\frac{18}{38})^{2}(\frac{20}{38})^{1} = 35.4\%$
+  
+- 3 wins: Y= 6  - The least likely event <br>
+  $\binom{3}{3}(\frac{18}{38})^{3}(\frac{20}{38})^{0} = 10.6\%$
+
+## Distribution
+
+```{r cars, echo = TRUE}
+x<-dbinom(0:3, size=3, prob=(18/38)) 
+barplot(x, 1:3)
+```
+
+

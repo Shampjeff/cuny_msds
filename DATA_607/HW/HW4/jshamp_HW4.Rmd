@@ -76,9 +76,9 @@ city_summary<- df %>%
             ) %>%
   arrange(status)
 
-DT::datatable(city_summary, 
+DT::datatable(city_summary,
          extensions = c('FixedColumns',"FixedHeader"),
-          options = list(scrollX = TRUE, 
+          options = list(scrollX = TRUE,
                          paging=TRUE,
                          fixedHeader=TRUE))
 ```
@@ -122,7 +122,10 @@ So as a city Phoenix has the best delayed to on-time percent and San Francisco h
 
 ```{r}
 ggplot(data = city_summary) +
-  geom_col(aes(x=reorder(city, delay_ontime_percent),y=delay_ontime_percent), position = "dodge", fill="lightblue3") +
+  geom_col(aes(x=reorder(city, delay_ontime_percent),
+               y=delay_ontime_percent), 
+           position = "dodge", 
+           fill="lightblue") +
   labs(x = "city",y= "delayed to on-time ratio")
 ```
 

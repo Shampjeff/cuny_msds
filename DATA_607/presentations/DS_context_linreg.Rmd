@@ -1,0 +1,74 @@
+---
+title: "Data Science in Context - Linear Regression"
+author: "Jeff Shamp"
+date: "2/27/2020"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Evaluation Strategies for Linear Regression
+
+Linear Regression is highly prone to overfit.
+
+Many metrics can be deceiving for this model type.
+
+Three strategies for evaluating results
+
+- Know your data
+- Adjusted $R^{2}$
+- Residual plots
+
+## Proper Scale and Common Sense
+```{r, out.width = "800px", out.height="500px"}
+knitr::include_graphics("/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/presentations/linreg.png")
+```
+
+- The best solution is to know your data. 
+- Adjust the window scale to best see the data. 
+- A computer can fit a line to anything.
+
+## $R^{2}$ 
+```{r, out.width = "800px", out.height="150px"}
+knitr::include_graphics("/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/presentations/r_squared.png")
+```
+
+- $R^{2}$ is the proportion of the variance that can be explained by the model, where one is "perfect" fit. 
+- $R^{2}$ will always increase with more variables. 
+- Very possible to have a terrible model with a great $R^{2}$.
+
+## Adjusted $R^{2}$
+```{r, out.width = "500px", out.height="400px"}
+knitr::include_graphics("/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/presentations/adjusted_r.png")
+```
+
+- Adjusted $R^{2}$ is a process of calculating $R^{2}$ as each new variable is added. 
+- A relative max/min in adjusted $R^{2}$ is good indicator for feature selection and pruning. 
+
+## Residual Plot
+```{r, out.width = "400px", out.height="500px"}
+knitr::include_graphics("/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/presentations/residuals.png")
+```
+
+- Residuals are the error associated to each variable. 
+- For linear Regression they should be evenly distributed around zero. 
+- If not, that variable is a poor cadidate for linear regression. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

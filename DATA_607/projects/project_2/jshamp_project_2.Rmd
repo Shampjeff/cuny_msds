@@ -1,0 +1,12 @@
+---
+title: "Tidy Data x3 - Project 2"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+## A New Output Format
+
