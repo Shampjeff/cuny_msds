@@ -10,6 +10,8 @@ output:
 
 # Task - tidy the data
 
+_I did some casual code reviews with Sam, Angel, and Layla and picked up a few ideas about how to tidy data from them._
+
 For this assignment we are to load in a `.csv` file with the data shown from Blackboard and tidy the data from wide to long form using `tidyr` and `dplyr`. Then perform an analysis on flight delays. 
 
 ## Load data
@@ -28,10 +30,8 @@ Loading **tidyr, dplyr, ggplot2, stringr, RCurl**
 
 ```{r}
 d<-getURL(
-  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW4/flights%20sample%20-%20data%20606%20-%20Sheet1.csv")
-df<-read.csv(text=d)
-df[2,"X"]<-"ALASKA"  # Manual assignment of airline names to blank spaces. 
-df[5, "X"]<-"AM WEST"
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW4/flights%20sample%20-%20data%20606%20-%20Sheet1.csv")
+df<-read.csv(text=d, na.strings = '')
 
 DT::datatable(df, 
          extensions = c('FixedColumns',"FixedHeader"),
@@ -40,14 +40,12 @@ DT::datatable(df,
                          fixedHeader=TRUE))
 ```
 
-
-I don't like having to replace the row names manually, but I could not find an automated way to do this. 
-
 Above is the raw, untidy data. At first, I'm going to do the following: remove the empty row in original, gather by cities and name them, rename the aribitary columns given by read.csv, change factors to characters, remove the commas in some of the arrival values, and cast time variables as numerics.
 
-```{r}
+```{r, warning=FALSE}
 df<-df %>%
-      drop_na() %>%                
+      fill(X, .direction = "down") %>%
+      drop_na() %>%
       gather(city, occur, Los.Angeles:Seattle) %>%
       rename(airline=X, status=X.1) %>%
       mutate_if(is.factor, as.character) %>%
@@ -87,17 +85,17 @@ DT::datatable(city_summary,
 Here we have some initial insights into which cities have on time and delayed flights. Right away, I would like to know the proportion of delayed to on-time for each city. San Diego has the lowest average delayed, but lowest averge on time, it would be good to know if that is proportionally better than LAX. My approach here is to aggregate the delayed flights and on-time flights by city and create a column that is a simple ratio of delayed to on-time. 
 
 
-```{r}
+```{r, warning=FALSE}
 delay_total<- df %>%
   select(status, city, occur)%>%
   filter(status == "delayed") %>%
-  group_by(city) %>%
+  group_by(city, status) %>%
   summarise(total = sum(occur)) # delays by city
 
 ontime_total<- df %>%
   select(status, city, occur)%>%
   filter(status == "on time") %>%
-  group_by(city) %>%
+  group_by(city, status) %>%
   summarise(total = sum(occur)) # on-time by city
 
 totals_df<-left_join(delay_total, ontime_total, by="city") %>%
@@ -105,7 +103,7 @@ totals_df<-left_join(delay_total, ontime_total, by="city") %>%
 
 city_summary<- full_join(city_summary, totals_df, by ="city")
 city_summary<- city_summary %>%
-   select(city, proportion, avg, min, max) %>%
+   select(city,status, proportion, avg, min, max) %>%
    arrange(proportion) %>%
    rename(delay_ontime_percent=proportion)
 
@@ -184,10 +182,11 @@ Looking at these graphs we see that most cities have at least one airline that h
 DT::datatable(cbind(
 am_df %>%
   group_by(status) %>%
-  summarise(on_time_percent_AM = sum(percent_occur)),
+  summarise(on_time_percent_AM = sum(percent_occur)) ,
 ak_df %>%
   group_by(status) %>%
-  summarise(on_time_percent_AK = sum(percent_occur))
+  summarise(on_time_percent_AK = sum(percent_occur)) %>%
+  select(on_time_percent_AK)
 ), 
  extensions = c('FixedColumns',"FixedHeader"),
   options = list(scrollX = TRUE, 

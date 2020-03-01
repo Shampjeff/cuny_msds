@@ -8,5 +8,283 @@ output:
     highlight: vignette
 ---
 
-## A New Output Format
+```{r, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(dbplyr)
+library(ggplot2)
+library(stringr)
+library(RCurl)
+library(RSQLite)
+```
+
+# Tidy Data From Three Sources
+
+I will be using data sources from the discussion posts of Sam Bellows, INSERT NAME, and the data I posted since I never had to tidy it (thanks to python/pandas).
+
+## Load Data
+```{r}
+b<-getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/banks.csv")
+df_banks<-read.csv(text=b, stringsAsFactors = F)
+
+u<-getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/unicef-u5mr.csv")
+df_unicef<-read.csv(text=u, stringsAsFactors = F)
+
+i<-getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg.csv")
+df_immg<-read.csv(text=i, header = T, na.strings = "", skip = 14)
+```
+
+Let's look at the raw state for each of these. 
+
+```{r, warning=FALSE}
+kableExtra::kable(df_banks[1:5,1:5]) %>% kableExtra::kable_styling(full_width = F)
+kableExtra::kable(df_unicef[1:5,1:5]) %>% kableExtra::kable_styling(full_width = F)
+kableExtra::kable(df_immg[1:5,1:5]) %>% kableExtra::kable_styling(bootstrap_options = "striped", full_width = F)
+```
+
+Got our work cut out for us. Let's start with the banks. The below function cycles through the columns and renames each selected column with a name that is located in one of the rows. many multi-index or nested column structures will have a name buried in a row value. `name_join` is an option to keep the letters of a column name and remove the `xxx.1` naming convention that R uses for duplicate column names. 
+
+```{r}
+rename.columns<-function(df, row_idx, col_start, name_join=F){
+  for (i in col_start:ncol(df)){                                
+    prefix<-c(str_remove(names(df[i]), "[.]\\d"), df[row_idx,i])
+    join_name<-paste(prefix, collapse="_")  
+    if (name_join == FALSE){
+      names(df)[names(df) == names(df[i])]<-df[row_idx,i]
+    } else {
+      names(df)[names(df) == names(df[i])]<-join_name
+    }
+  }
+  return(df)
+}
+```
+
+
+## Bank Stocks 2006
+
+This is data regarding bank stocks from 2006 so it can give a nice window into how these banks were doing before the crash of 2007/08. In this data set there are only six banks listed BAC, C, GS, MS, JPM, and WFC. Each bank has the same varibles associated to them; open, high, low, close, and volume. There is also a date for each bank. 
+
+
+```{r, warning=FALSE}
+df_banks<-rename.columns(df_banks, 1, 2, name_join = TRUE)
+df_banks<-df_banks %>%
+  slice(3:dim(df_banks)[1]) %>%             # drop unnecessary lines
+  rename(Date = Bank.Ticker) %>%
+  pivot_longer(-Date, names_to = "bank",
+               values_to = "value") %>%      # reshape banks to one column
+  separate(bank, c("bank", "status"),
+           sep = "_") %>%                    # separate status (open, close, etc.)
+  mutate_at(.vars = vars(value),
+            .funs = as.numeric) %>%          # Change data types
+  mutate_at(.vars = vars(Date),
+            .funs = as.Date)
+
+DT::datatable(df_banks,
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+
+```
+
+
+The discussion piece talks about viewing the closing price as a function of time to see who fared better during that time period. The results are below. 
+
+```{r}
+df_banks %>%
+  filter(status=="Close") %>%
+  ggplot() +
+  geom_line(aes(x=Date, y=value, col=bank)) +
+  labs(x="Date", y="Closing Value", title = "Bank Stock Closing Value 2006 - 2016")
+```
+
+Brutal. Citi absolutely tanked. Let's look between 01-01-2008 and 01-01-2010.
+
+```{r}
+df_banks %>%
+  filter(status=="Close") %>%
+  filter(Date >="2008-01-01" & Date <= "2010-01-01") %>%
+  ggplot() +
+  geom_line(aes(x=Date, y=value, col=bank)) +
+  labs(x="Date", y="Closing Value", title = "Bank Stock Closing Value 2008 - 2010")
+```
+
+Interesting, by the time Citi hit rock bottom (and never regained!) Goldman Sacks had already recovered most of its pre-collapse value. For all the others listed this time period was not as catastrophic as it seemed. 
+
+## Unicef Morality Data
+
+Death rates by country since 1950s. 
+
+```{r}
+DT::datatable(df_unicef[1:5,1:4], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+We can pivot this to a longer format with only three columns; country, year, mortality rate. 
+
+```{r}
+df_unicef %<>%
+  pivot_longer(-CountryName,                    # reshape columns to rows
+               names_to = "Year", 
+               values_to = "Mortality_Rate") %>%
+  mutate(Year = str_remove_all(Year,           # Remove letters from year
+                               "[U5MR]*[.]")) %>%
+  rename(Country_Name = CountryName) %>%
+  mutate_at(.vars = vars(Year),                 # change data type
+            .funs = as.integer)
+
+DT::datatable(df_unicef, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+_Phew_, that turned out pretty easy. There was no analysis task written in the discussion post, so I'll look into a few questions that I have. Let's look at Afghanistan. I would interested to know if the  child morality rate changed noticably during the Soviet incursion in the 1980s or the US incursion in the 2000s. 
+
+```{r}
+df_unicef %>%
+  filter(Country_Name == "Afghanistan") %>%
+  ggplot() +
+    geom_point(aes(x=Year, y=Mortality_Rate), na.rm = T)
+```
+
+Nope. It has only gotten better over time despite near constant war. 
+
+Let's see if the same is true for other countries that the US has been involved with extensively in since 1960. These would be Vietnam, Iraq, and Syria. I'll also add the US child mortality rate as a baseline for comparison. 
+
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Afghanistan", 
+                           "Vietnam",
+                           "Iraq",
+                           "Syria",
+                           "United States of America")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+
+Everyone just continues to imporve over time, though it seems harder once under a value of 50. Interestingly, Iraq and Syria seem to display an exponential drop in child morality rates.  
+
+What about countries that have experienced long and painful dirty wars or large scale organized crime - do they see similar drops in child mortality?
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Colombia", 
+                           "Mexico",
+                           "Argentina",
+                           "Peru",
+                           "Honduras")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+Again, massive gains in terms of improving child wellness in spite of serious societial level clamities. Let's see if we can find countries with an increase in childhood mortality and see if there is some kind of explanation. 
+
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Somalia", 
+                           "Uganda",
+                           "Kenya", 
+                           "Sudan", 
+                           "Rwanda")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+Here we see the first two countries with increases in childhood mortality; Uganda, Kenya, and Rwanda. The increase in mortality in Uganda and Kenya both align the rise of brutal dictorships in these two countries. Idi Amin came to power by coup in Uganda in 1971 and was overthrown himself in 1980. Similarly, Daniel Moi came to power in 1978 in Kenya and by 1986 had transformed Kenya's government into a _de fact_ ethnostate where only his ethic group had access to services and opportunity. Rwanda is more complicated. the first spike is the time period directly after Rwanda gained independence and was mared by colonial era ethic hatred. The second spike was the Rwandan genocide that started in 1994. The genocide was once again fueled by colonial era hatred. I am genuinely shocked that Somalia did not have an increase in childhood morality in the early nineties due to a combination of war, famine, and drought. 
+
+## UN Immigration Data
+
+This data set is huge, so I'm only looking at one table, which cooresponds to the year 1990. Once a pipline can be established, I can tidy a few more tables, join them and look at some trends. At first, here is a look at the data in a mostly raw form. 
+
+```{r}
+DT::datatable(df_immg[1:5,1:5], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+Destination is where people ended up,conntry of origin is the total number of people who came to the destination column, the rest of the columns outline the numbers from each other country recognized by the UN. These are to columns I will tidy. 
+
+
+```{r}
+df_immg<-df_immg %>%                         
+  select(Major.area..region..country.or.area.of.destination, 
+         Country.of.origin, 
+         X.2:ncol(df_immg)) %>%
+  mutate_if(is.factor, as.character) %>%     # change data types
+  rename(                                    # replace unruly names
+    destination = Major.area..region..country.or.area.of.destination,
+    inbound_total = Country.of.origin) %>%
+  replace(is.na(.), 0)                       # replacing NA with zero
+
+DT::datatable(df_immg[1:5,1:5], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+Again, we need to rename the columns based on a row value. 
+
+
+```{r}
+df_immg<-rename.columns(df_immg, 
+                        row_idx = 1, 
+                        col_start = 3)
+df_immg<-df_immg[2:length(df_immg), 1:234]   # drop that last 10 rows (NAs)
+
+DT::datatable(df_immg[1:5,1:4], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+This dataset is almost square, to make it tidy I think we want to pivot this to three columns: to, form, total moved. Once in a tidy format, we can remove whitespace from the numbers and cast them as numerics. 
+
+```{r, warning=FALSE}
+df_immg<-df_immg %>%  
+    pivot_longer(                       # gather columns to rows   
+                 -c("destination", 
+                    "inbound_total"),
+                 names_to = "origin",    # naming params
+                 values_to = "total", 
+                 names_repair = "unique") %>%        
+    mutate(total = str_remove_all(total, " ")) %>%   
+    mutate(inbound_total = str_remove_all(inbound_total, " ")) %>%
+    mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric)
+
+DT::datatable(df_immg, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+57,536 rows with many repeat values and destinations. Is this really _more_ tidy? I am not sure I'm convinced of the Wickham world-view. 
+
+
+
+
+
+
+
+
+
+
 
