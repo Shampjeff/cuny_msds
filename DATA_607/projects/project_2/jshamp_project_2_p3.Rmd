@@ -1,0 +1,280 @@
+---
+title: "Tidy Data - Project 2 Part 3 - UN Migration Data"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+
+```{r setup, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(RCurl)
+```
+
+Using **tidyr, dplyr, ggplot2, stringr, RCurl**
+
+# UN Immigration Data
+
+I will be using the data source from Subhalaxmi Rout regarding UN Migrartion Data. 
+
+This data set is huge, so I'm only looking at one table, which cooresponds to the year 1990. Once a pipline can be established, I can tidy a few more tables, join them and look at some trends. At first, here is a look at the data in a mostly raw form. 
+
+## Load Data
+
+```{r}
+m<-getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg.csv")
+df_immg<-read.csv(text=m, header = T, na.strings = "", skip = 14)
+```
+
+Looking at the initial state of the data. 
+
+```{r}
+DT::datatable(df_immg[1:5,1:5], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+I'll need to rename columns so I am re-using a function I wrote previously to replace the column names with a value found in a given row. 
+
+```{r}
+rename.columns<-function(df, row_idx, col_start, name_join=F){
+  for (i in col_start:ncol(df)){                                
+    prefix<-c(str_remove(names(df[i]), "[.]\\d"), df[row_idx,i])
+    join_name<-paste(prefix, collapse="_")  
+    if (name_join == FALSE){
+      names(df)[names(df) == names(df[i])]<-df[row_idx,i]
+    } else {
+      names(df)[names(df) == names(df[i])]<-join_name
+    }
+  }
+  return(df)
+}
+```
+
+Destination is where people ended up, country of origin is the total number of people who came to the destination column, the rest of the columns outline the numbers from each other country recognized by the UN. These are to columns I will tidy. 
+
+
+```{r}
+df_immg<-df_immg %>%                         
+  select(Major.area..region..country.or.area.of.destination, 
+         Country.of.origin, 
+         X.2:ncol(df_immg)) %>%
+  mutate_if(is.factor, as.character) %>%     # change data types
+  rename(                                    # replace unruly names
+    destination = Major.area..region..country.or.area.of.destination,
+    inbound_total = Country.of.origin) %>%
+  replace(is.na(.), 0)                       # replacing NA with zero
+
+DT::datatable(df_immg[1:5,1:5], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+Again, we need to rename the columns based on a row value. 
+
+
+```{r}
+df_immg<-rename.columns(df_immg, 
+                        row_idx = 1, 
+                        col_start = 3)
+df_immg<-df_immg[2:length(df_immg), 1:234]   # drop that last 10 rows (NAs)
+df_immg$year = 1990
+DT::datatable(df_immg[1:5,1:4], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+This dataset is almost square, to make it tidy I think we want to pivot this to three columns: to, form, total moved. Once in a tidy format, we can remove whitespace from the numbers and cast them as numerics. 
+
+```{r, warning=FALSE}
+df_immg<-df_immg %>%  
+    pivot_longer(                       # gather columns to rows   
+                 -c("destination", 
+                    "inbound_total",
+                    "year"),
+                 names_to = "origin",    # naming params
+                 values_to = "total", 
+                 names_repair = "unique") %>%        
+    mutate(total = str_remove_all(total, " ")) %>%   
+    mutate(inbound_total = str_remove_all(inbound_total, " ")) %>%
+    mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric) 
+
+DT::datatable(df_immg, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+
+57,536 rows with many repeat values and destinations. Is this really _more_ tidy? 
+
+### Migration Data Pipeline
+
+Now that our process is in place, I'll bring in and tidy several other years; 2000, 2005, 2015. 
+
+```{r}
+urls<-c(
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2k.csv",
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2005.csv",
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2015.csv")
+data_years<-c(2000,2005,2015)
+
+for (i in 1:length(data_years)){
+
+  d<-getURL(urls[i])
+  df_immg_i<-read.csv(text=d, header = T, na.strings = "", skip = 14)
+  
+  df_immg_i<-df_immg_i %>%
+    select(Major.area..region..country.or.area.of.destination,
+           Country.of.origin,
+           X.2:ncol(df_immg_i)) %>%
+    mutate_if(is.factor, as.character) %>%     # change data types
+    rename(                                    # replace unruly names
+      destination = Major.area..region..country.or.area.of.destination,
+      inbound_total = Country.of.origin) %>%
+    replace(is.na(.), 0)                     # replacing NA with zero
+
+  df_immg_i<-rename.columns(df_immg_i,
+                          row_idx = 1,
+                          col_start = 3)[2:length(df_immg_i), 1:234]
+
+  df_immg_i<-df_immg_i %>%
+      pivot_longer(                       # gather columns to rows
+                   -c("destination",
+                      "inbound_total"),
+                   names_to = "origin",    # naming params
+                   values_to = "total",
+                   names_repair = "unique") %>%
+      mutate(total = str_remove_all(total, " ")) %>%
+      mutate(inbound_total = str_remove_all(inbound_total, " ")) %>%
+      mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric) %>%
+      mutate(year = data_years[i])
+  df_immg<-rbind(df_immg, df_immg_i)
+}
+```
+
+
+```{r, warning=FALSE}
+DT::datatable(df_immg, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+That's one huge dataframe - 223,184 rows. 
+
+## Analysis 
+
+the discussion post talks about looking at migration patterns for the United States. Where are people coming to the US from and where are Americans going. 
+
+## Who is coming to North America?
+
+First, let's look at some data integrity and make sure that the US is listed in a consistent format. 
+
+```{r}
+df<-df_immg %>%
+  filter(origin=="Afghanistan" & destination %in% c(
+                                                    "Northern America",
+                                                    "United States of America", 
+                                                    "Canada", 
+                                                    "United States")) %>%
+  select(year, origin, destination, total) %>%
+  group_by(year, destination) %>%
+  summarise(total = sum(total))
+
+DT::datatable(df, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Looks like the US got lumped into Northern America after 2005. At least for Afghanistan - Let's check with another example. 
+
+```{r}
+df<-df_immg %>%
+  filter(origin=="Germany" & destination %in% c(
+                                                    "Northern America",
+                                                    "United States of America", 
+                                                    "Canada", 
+                                                    "Mexico")) %>%
+  select(year, origin, destination, total) %>%
+  group_by(year, destination) %>%
+  summarise(total = sum(total))
+
+DT::datatable(df, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Ok so this is disappointing. Northern America has become a catch all for Canada and the United States some time after 2000. It's going to be hard to split this into which exact country each nationality immigrated to if the US and Canada are grouped together. 
+
+
+```{r}
+df<-df_immg %>%
+  filter(destination == "Northern America" & total >0) %>%
+  select(year, origin, total) %>%
+  group_by(year, origin) %>%
+  arrange(desc(total))
+
+DT::datatable(df, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Mexico dominates the migration in-flows to the US and Canada, as expected. The more recent numbers from China and India are the next closest. The numbers for Mexico do seem to ebb-and-flow though. The migration numbers surged in 2000 and dropped by 2005 only to surge again by 2015.   
+
+```{r}
+df_immg %>%
+  filter(destination=="Northern America" & origin %in% c("Mexico", "China", "India", "Philippines")) %>%
+  select(year,origin, total) %>%
+  ggplot() +
+  geom_line(aes(x=year, y=total, group=origin, color=origin))
+```
+
+We see here that there was general decrease in migration between 2000 and 2005 and a return to increases in 2015 for the top origin nations. Clearly, Mexico is far apart from the rest of the field. 
+
+### Where are Americans going?
+
+The regional groupings obviously take up a lot of the top values, but we can exclude some of them to get the board strokes of where Americans are mirgrating to. Again, people from the US are headed to Mexico, Central America, Latin America, and the Caribbean in large scale. 
+
+```{r}
+df_immg %>%
+  filter(origin=="United States of America" & 
+           destination !="WORLD" & 
+           destination !="Developing regions" & 
+           destination !="Less developed regions excluding least developed countries" &
+           destination !="Developed regions")%>%
+  select(year, origin, destination, total) %>%
+  group_by(year, destination) %>%
+  summarise(total = sum(total)) %>%
+  arrange(desc(total)) %>%
+  slice(1:7) %>%
+  ggplot() +
+  geom_line(aes(x=year, y=total, group=destination, color=destination))
+```
+
+We see a similar trend of people leaving the US and Canada as we saw coming into the United States. A little dip between 2000 and 2005, followed by a surge in 2015. 
+
+
+

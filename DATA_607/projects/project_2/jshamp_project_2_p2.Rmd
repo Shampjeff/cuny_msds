@@ -1,0 +1,129 @@
+---
+title: "Tidy Data - Project 2 part 2 - UNICEF"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+```{r, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(RCurl)
+```
+
+Using **tidyr, dplyr, ggplot2, stringr, RCurl**
+
+# Tidy Data
+
+I will be using the data source from Sam Bellows regarding UNICEF child mortality rates
+
+
+## Load Data
+
+Looking at the initial state of the data.
+
+```{r}
+u<-getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/unicef-u5mr.csv")
+df_unicef<-read.csv(text=u, stringsAsFactors = F)
+```
+
+
+## Unicef Childhood Morality Data
+
+Child death rates by country since 1950. 
+
+```{r}
+DT::datatable(df_unicef[1:5,1:4], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+We can pivot this to a longer format with only three columns; country, year, mortality rate. 
+
+```{r}
+df_unicef %<>%
+  pivot_longer(-CountryName,                    # reshape columns to rows
+               names_to = "Year", 
+               values_to = "Mortality_Rate") %>%
+  mutate(Year = str_remove_all(Year,           # Remove letters from year
+                               "[U5MR]*[.]")) %>%
+  rename(Country_Name = CountryName) %>%
+  mutate_at(.vars = vars(Year),                 # change data type
+            .funs = as.integer)
+
+DT::datatable(df_unicef, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+_Phew_, that turned out pretty easy. 
+
+## Analysis
+
+There was no analysis task written in the discussion post, so I'll look into a few questions that I have. Let's look at Afghanistan. I would interested to know if the  child morality rate changed noticably during the Soviet incursion in the 1980s or the US incursion in the 2000s. 
+
+```{r}
+df_unicef %>%
+  filter(Country_Name == "Afghanistan") %>%
+  ggplot() +
+    geom_point(aes(x=Year, y=Mortality_Rate), na.rm = T)
+```
+
+Nope. It has only gotten better over time despite near constant war. 
+
+Let's see if the same is true for other countries that the US has been involved with extensively in since 1960. These would be Vietnam, Iraq, and Syria. I'll also add the US child mortality rate as a baseline for comparison. 
+
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Afghanistan", 
+                           "Vietnam",
+                           "Iraq",
+                           "Syria",
+                           "United States of America")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+
+Everyone just continues to imporve over time, though it seems harder once under a value of 50. Interestingly, Iraq and Syria seem to display an exponential drop in child morality rates.  
+
+What about countries that have experienced long and painful dirty wars or large scale organized crime - do they see similar drops in child mortality?
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Colombia", 
+                           "Mexico",
+                           "Argentina",
+                           "Peru",
+                           "Honduras")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+Again, massive gains in terms of improving child wellness in spite of serious societial level clamities. Let's see if we can find countries with an increase in childhood mortality and see if there is some kind of explanation. 
+
+
+```{r, warning=FALSE}
+df_unicef %>%
+  filter(Country_Name == c("Somalia", 
+                           "Uganda",
+                           "Kenya", 
+                           "Sudan", 
+                           "Rwanda")) %>%
+  ggplot() +
+    geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
+```
+
+Here we see the first two countries with increases in childhood mortality; Uganda, Kenya, and Rwanda. The increase in mortality in Uganda and Kenya both align the rise of brutal dictorships in these two countries. Idi Amin came to power by coup in Uganda in 1971 and was overthrown himself in 1980. Similarly, Daniel Moi came to power in 1978 in Kenya and by 1986 had transformed Kenya's government into a _de facto_ ethnostate where only his ethic group had access to services and opportunity. Rwanda is more complicated. the first spike is the time period directly after Rwanda gained independence and was mared by colonial era ethic hatred. The second spike was the Rwandan genocide that started in 1994. The genocide was once again fueled by colonial era hatred. I am genuinely shocked that Somalia did not have an increase in childhood morality in the early nineties due to a combination of war, famine, and drought. 
+
