@@ -266,7 +266,8 @@ df_immg<-df_immg %>%
                  names_repair = "unique") %>%        
     mutate(total = str_remove_all(total, " ")) %>%   
     mutate(inbound_total = str_remove_all(inbound_total, " ")) %>%
-    mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric)
+    mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric) %>%
+    mutate(year = 1990)
 
 DT::datatable(df_immg, 
          extensions = c('FixedColumns',"FixedHeader"),
@@ -276,12 +277,55 @@ DT::datatable(df_immg,
 ```
 
 
-57,536 rows with many repeat values and destinations. Is this really _more_ tidy? I am not sure I'm convinced of the Wickham world-view. 
+57,536 rows with many repeat values and destinations. Is this really _more_ tidy? 
+
+### Migration Data Pipeline
+
+Now that our process is in place, I'll bring and tidy a table from another year, 2000. 
+
+```{r}
+urls<-c("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2k.csv",
+        )
+data_years<-c(2000,2010,2015)
+
+for (i in data_years){
+
+  i<-getURL(urls[i]) 
+  df_immg_i<-read.csv(text=i, header = T, na.strings = "", skip = 14)
+
+  df_immg_i<-df_immg_i %>%                         
+    select(Major.area..region..country.or.area.of.destination, 
+           Country.of.origin, 
+           X.2:ncol(df_immg_i)) %>%
+    mutate_if(is.factor, as.character) %>%     # change data types
+    rename(                                    # replace unruly names
+      destination = Major.area..region..country.or.area.of.destination,
+      inbound_total = Country.of.origin) %>%
+    replace(is.na(.), 0)                       # replacing NA with zero
+  
+  df_immg_i<-rename.columns(df_immg_i, 
+                          row_idx = 1, 
+                          col_start = 3)[2:length(df_immg_i), 1:234] 
+  #df_immg<-df_immg[2:length(df_immg), 1:234]   # drop that last 10 rows (NAs)
+  
+  df_immg_i<-df_immg_i %>%  
+      pivot_longer(                       # gather columns to rows   
+                   -c("destination", 
+                      "inbound_total"),
+                   names_to = "origin",    # naming params
+                   values_to = "total", 
+                   names_repair = "unique") %>%        
+      mutate(total = str_remove_all(total, " ")) %>%   
+      mutate(inbound_total = str_remove_all(inbound_total, " ")) %>%
+      mutate_at(.vars=vars(total, inbound_total), .funs = as.numeric) %>%
+      mutate(year=i)
+}
+```
 
 
-
-
-
+```{r}
+df_immg_2k
+```
 
 
 
