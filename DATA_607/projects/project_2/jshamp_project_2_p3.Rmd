@@ -125,14 +125,15 @@ DT::datatable(df_immg,
 
 ### Migration Data Pipeline
 
-Now that our process is in place, I'll bring in and tidy several other years; 2000, 2005, 2015. 
+Now that our process is in place, I'll bring in and tidy several other years; 2000, 2005, 2010, and 2015. 
 
 ```{r}
 urls<-c(
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2k.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2005.csv",
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2010.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2015.csv")
-data_years<-c(2000,2005,2015)
+data_years<-c(2000,2005,2010,2015)
 
 for (i in 1:length(data_years)){
 
@@ -177,7 +178,7 @@ DT::datatable(df_immg,
                          fixedHeader=TRUE))
 ```
 
-That's one huge dataframe - 223,184 rows. 
+That's one huge dataframe - 277,240 rows. I understand that this should be stored on a SQL server, but Rstudio can still handle this sized data so I'm keeping it here for now. 
 
 ## Analysis 
 
@@ -209,11 +210,10 @@ Looks like the US got lumped into Northern America after 2005. At least for Afgh
 
 ```{r}
 df<-df_immg %>%
-  filter(origin=="Germany" & destination %in% c(
-                                                    "Northern America",
-                                                    "United States of America", 
-                                                    "Canada", 
-                                                    "Mexico")) %>%
+  filter(origin=="Germany" & destination %in% c("Northern America",
+                                                "United States of America", 
+                                                "Canada", 
+                                                "Mexico")) %>%
   select(year, origin, destination, total) %>%
   group_by(year, destination) %>%
   summarise(total = sum(total))
@@ -246,7 +246,10 @@ Mexico dominates the migration in-flows to the US and Canada, as expected. The m
 
 ```{r}
 df_immg %>%
-  filter(destination=="Northern America" & origin %in% c("Mexico", "China", "India", "Philippines")) %>%
+  filter(destination=="Northern America" & origin %in% c("Mexico", 
+                                                         "China",
+                                                         "India",
+                                                         "Philippines")) %>%
   select(year,origin, total) %>%
   ggplot() +
   geom_line(aes(x=year, y=total, group=origin, color=origin))
@@ -258,13 +261,13 @@ We see here that there was general decrease in migration between 2000 and 2005 a
 
 The regional groupings obviously take up a lot of the top values, but we can exclude some of them to get the board strokes of where Americans are mirgrating to. Again, people from the US are headed to Mexico, Central America, Latin America, and the Caribbean in large scale. 
 
-```{r}
+```{r,fig.width=8, fig.height=5}
 df_immg %>%
   filter(origin=="United States of America" & 
-           destination !="WORLD" & 
-           destination !="Developing regions" & 
-           destination !="Less developed regions excluding least developed countries" &
-           destination !="Developed regions")%>%
+         destination !="WORLD" & 
+         destination !="Developing regions" & 
+         destination !="Less developed regions excluding least developed countries" &
+         destination !="Developed regions")%>%
   select(year, origin, destination, total) %>%
   group_by(year, destination) %>%
   summarise(total = sum(total)) %>%

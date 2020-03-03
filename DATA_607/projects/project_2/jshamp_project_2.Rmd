@@ -32,10 +32,14 @@ df_banks<-read.csv(text=b, stringsAsFactors = F)
 Let's look initial state of the data. 
 
 ```{r, warning=FALSE}
-kableExtra::kable(df_banks[1:5,1:5]) %>% kableExtra::kable_styling(full_width = F)
+DT::datatable(df_banks[1:5,1:4], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
 ```
 
-Got our work cut out for us. Let's start with the banks. The below function cycles through the columns and renames each selected column with a name that is located in one of the rows. many multi-index or nested column structures will have a name buried in a row value. `name_join` is an option to keep the letters of a column name and remove the `xxx.1` naming convention that R uses for duplicate column names. 
+Got our work cut out for us. The below function cycles through the columns and renames each selected column with a name that is located in one of the rows. Many multi-index or nested column structures will have a name buried in a row value. The function takes a dataframe `df`, the row index where the correct name is located `row_idx`, and the column where to start the name changing `col_start`. `name_join` is an option to keep the letters of a column name and remove the `xxx.1` naming convention that R uses for duplicate column names. 
 
 ```{r}
 rename.columns<-function(df, row_idx, col_start, name_join=F){
@@ -100,7 +104,8 @@ df_banks %>%
   filter(Date >="2008-01-01" & Date <= "2010-01-01") %>%
   ggplot() +
   geom_line(aes(x=Date, y=value, col=bank)) +
-  labs(x="Date", y="Closing Value", title = "Bank Stock Closing Value 2008 - 2010")
+  labs(x="Date", y="Closing Value", 
+       title = "Bank Stock Closing Value 2008 - 2010")
 ```
 
 Interesting, by the time Citi hit rock bottom (and never regained!) Goldman Sacks had already recovered most of its pre-collapse value. For all the others listed this time period was not as catastrophic as it seemed. 
