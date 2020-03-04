@@ -1,0 +1,144 @@
+---
+title: "Data 605 HW 6"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: material
+    highlight: vignette
+
+---
+
+1. A box contains 54 red marbles, 9 white marbles, and 75 blue marbles. If a marble is randomly selected from the box, what is the probability that it is red or blue? Express your answer as a fraction or a decimal number rounded to four decimal places.
+
+
+```{r}
+space<-54+9+75
+p_red<-54/space
+p_blue<-75/space
+print(paste("Prob of red or blue marble",round(p_red+p_blue,4)))
+```
+
+2. You are going to play mini golf. A ball machine that contains 19 green golf balls, 20 red golf balls, 24 blue golf balls, and 17 yellow golf balls, randomly gives you your ball. What is the probability that you end up with a red golf ball? Express your answer as a simplified fraction or a decimal rounded to four decimal places.
+
+```{r}
+space<-19+20+24+17
+p_red<-20/space
+print(paste("Prob of red golf ball",round(p_red,4)))
+
+```
+
+
+3. A pizza delivery company classifies its customers by gender and location of residence. The research department has gathered data from a random sample of 1399 customers. 
+What is the probability that a customer is not male or does not live with parents? Write your answer as a fraction or a decimal number rounded to four decimal places.
+
+**This is asking for the probability of being female or the probability of not living with parents. Remember to subtract females who are with parents and remove double counted females.**
+
+```{r}
+space<-1399
+p_female<-(728-252)/space
+p_not_parents<-(932-(728-252))/space
+print(paste("Prob of female or not with parents",round(p_female+p_not_parents,4)))
+
+```
+
+4. Determine if the following events are independent. Going to the gym. Losing weight.
+Answer: A) Dependent B) Independent
+
+**B - These two events do not have to happen at the same time so they are independent.**
+
+
+5. A veggie wrap at City Subs is composed of 3 different vegetables and 3 different condiments wrapped up in a tortilla. If there are 8 vegetables, 7 condiments, and 3 types of tortilla available, how many different veggie wraps can be made?
+
+**Classic OR statement with a choose function**
+
+```{r}
+wraps<-choose(3,3)+choose(8,3)+choose(7,3)
+print(paste("The total numbers of wraps possible at City Subs:",wraps))
+```
+
+
+6. Determine if the following events are independent.
+Jeff runs out of gas on the way to work. Liz watches the evening news.
+
+Answer: A) Dependent B) Independent
+
+**B - These two events do not have to happen at the same time so they are independent.**
+
+
+7. The newly elected president needs to decide the remaining 8 spots available in the cabinet he/she is appointing. If there are 14 eligible candidates for these positions (where rank matters), how many different ways can the members of the cabinet be appointed?
+
+**order matters, permuatation**
+
+```{r}
+perm<-function(n,k){
+  p<-factorial(n)/(factorial(n-k))
+  return(p)
+}
+perm(14,8)
+```
+
+
+
+8. A bag contains 9 red, 4 orange, and 9 green jellybeans. What is the probability of reaching into the bag and randomly withdrawing 4 jellybeans such that the number of red ones is 0, the number of orange ones is 1, and the number of green ones is 3? Write your answer as a fraction or a decimal number rounded to four decimal places.
+
+**withdraw without replacement so the order matters for the denominator, but the order doesn't matter for the numerator**
+
+```{r}
+numerator<-1*choose(4,1)*choose(9,3)
+denom<-perm((9+4+9),4)
+print(paste("Probability of red:0, orange:1, green:3 = ",round(numerator/denom,4)))
+```
+
+
+9. Evaluate the following expression.
+$\frac{11!}{7!}$
+
+$11*10*9*8 = 7920$
+
+10. Describe the complement of the given event.
+67% of subscribers to a fitness magazine are over the age of 34.
+
+**33% of subscribers are under the age of 34.**
+
+11. If you throw exactly three heads in four tosses of a coin you win \$97. If not, you pay me \$30. 
+
+Step 1. Find the expected value of the proposition. Round your answer to two decimal places.
+
+**binomial probability expected value.**
+
+$\mu = np = 4*\frac{1}{2} = 2$ **The expected value of flipping a coin four times and getting heads is 2, which is a loss!**
+
+Step 2. If you played this game 559 times how much would you expect to win or lose? (Losses must be entered as negative.)
+
+
+
+
+12. Flip a coin 9 times. If you get 4 tails or less, I will pay you \$23. Otherwise you pay me \$26. 
+
+Step 1. Find the expected value of the proposition. Round your answer to two decimal places.
+
+
+
+Step 2. If you played this game 994 times how much would you expect to win or lose? (Losses must be entered as negative.)
+
+
+
+13. The sensitivity and specificity of the polygraph has been a subject of study and debate for years. A 2001 study of the use of polygraph for screening purposes suggested that the probability of detecting a liar was .59 (sensitivity) and that the probability of detecting a "truth teller" was .90 (specificity). We estimate that about 20% of individuals selected for the screening polygraph will lie.
+
+a. What is the probability that an individual is actually a liar given that the polygraph detected him/her as such? (Show me the table or the formulaic solution or both.)
+
+
+
+b. What is the probability that an individual is actually a truth-teller given that the polygraph detected him/her as such? (Show me the table or the formulaic solution or both.)
+
+
+
+c. What is the probability that a randomly selected individual is either a liar or was identified as a liar by the polygraph? Be sure to write the probability statement.
+
+
+
+
+
+
+

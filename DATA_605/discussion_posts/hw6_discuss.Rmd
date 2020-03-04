@@ -1,0 +1,23 @@
+---
+title: "hw6 discuss"
+author: "Jeff Shamp"
+date: "3/4/2020"
+output: pdf_document
+---
+
+3. A pizza delivery company classifies its customers by gender and location of residence. The research department has gathered data from a random sample of 1399 customers. 
+What is the probability that a customer is not male or does not live with parents? Write your answer as a fraction or a decimal number rounded to four decimal places.
+
+**This is asking for the probability of being female or the probability of not living with parents. Remember to subtract females who are with parents and remove double counted females.**
+
+```{r}
+space<-1399
+p_female<-(728-252)/space
+p_not_parents<-(932-(728-252))/space
+print(paste("Prob of female or not with parents",round(p_female+p_not_parents,4)))
+
+```
+
+I think this is the right way to do it, but not sure about two things
+1) The need to subtract all the double counted females. 
+2) A more efficient way to do this in R. 
