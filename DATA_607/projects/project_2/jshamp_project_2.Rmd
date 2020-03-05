@@ -108,7 +108,43 @@ df_banks %>%
        title = "Bank Stock Closing Value 2008 - 2010")
 ```
 
-Interesting, by the time Citi hit rock bottom (and never regained!) Goldman Sacks had already recovered most of its pre-collapse value. For all the others listed this time period was not as catastrophic as it seemed. 
+Interesting, by the time Citi hit rock bottom (and never regained!) Goldman Sacks had already recovered most of its pre-collapse value. For all the others listed this time period was not as catastrophic as it seemed. Next, let's look at the aggregated data for median closing price in 6 month intervals. This will give us a more high level view of how these stocks fared during this time period. It may also give us less noise and more separation between banks for better comparison. 
 
 
+```{r}
+inner_join(inner_join(df_banks %>%        # Calculate a 6 month median
+  filter(status=="Close") %>%
+  filter(Date >='2008-01-01' & Date <='2008-07-01') %>%
+  group_by(bank) %>%
+  summarise('2008-07-01' = median(value)),
+df_banks %>%
+  filter(status=="Close") %>%
+  filter(Date >='2008-07-01' & Date <='2008-12-31') %>%
+  group_by(bank) %>%
+  summarise('2008-12-31' = median(value)), by = "bank"),
+inner_join(df_banks %>%
+  filter(status=="Close") %>%
+  filter(Date >='2009-01-01' & Date <='2009-07-01') %>%
+  group_by(bank) %>%
+  summarise('2009-07-01' = median(value)),
+df_banks %>%
+  filter(status=="Close") %>%
+  filter(Date >='2009-07-01' & Date <='2009-12-31') %>%
+  group_by(bank) %>%
+  summarise('2009-12-31' = median(value)), by = "bank"), by = "bank") %>%
+  
+  pivot_longer(-bank,                    # Tidy the median prices
+               names_to = "date",
+               values_to = "closing_price") %>%
+  mutate_at(.vars = vars(date),
+            .funs = as.Date) %>%         # Cast the 6 month end as a date
+  
+  ggplot() + 
+  geom_line(aes(x=date, y=closing_price, col=bank)) +
+  labs(x="Date",
+       y="Closing Value", 
+       title = "Median Bank Stock Closing Value 2008 - 2010")
+```
+
+With some more separation, we can see that Bank of America actually got hit pretty hard. With a 6 month median of around \$45 per share in the summer of 2008 to around \$12 per share by the first day of 2010, that substantial. JPM, MS, and WFC were not largely affected in this time period according to median closing price. We also see again that Goldman Sacks completely recovered in median value in the two year interval. We see that yes Citi collapsed from around \$230 per share to arond \$30 per share in two years, which represents a 7x decline in value, but Citi went from 5x its competitors to being aligned with them in median stock price. One could make the arguement that Citi's price collapse was more akin to a return to normalcy in price relative to peer banking institutions. 
 

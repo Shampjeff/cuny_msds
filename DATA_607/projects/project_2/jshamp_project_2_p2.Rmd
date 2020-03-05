@@ -70,6 +70,8 @@ _Phew_, that turned out pretty easy.
 
 ## Analysis
 
+This dataset alone cannot support any causal inferences, so we cannot, from this data only make the claim of why child mortality rates have gone up or down, but we can inspect the data for trends or heuristics in context of a couuntries history. 
+
 There was no analysis task written in the discussion post, so I'll look into a few questions that I have. Let's look at Afghanistan. I would interested to know if the  child morality rate changed noticably during the Soviet incursion in the 1980s or the US incursion in the 2000s. 
 
 ```{r}
@@ -120,10 +122,11 @@ df_unicef %>%
                            "Uganda",
                            "Kenya", 
                            "Sudan", 
-                           "Rwanda")) %>%
+                           "Rwanda",
+                           "South Africa")) %>%
   ggplot() +
     geom_line(aes(x=Year, y=Mortality_Rate, col = Country_Name), na.rm = T)
 ```
 
-Here we see the first two countries with increases in childhood mortality; Uganda, Kenya, and Rwanda. The increase in mortality in Uganda and Kenya both align the rise of brutal dictorships in these two countries. Idi Amin came to power by coup in Uganda in 1971 and was overthrown himself in 1980. Similarly, Daniel Moi came to power in 1978 in Kenya and by 1986 had transformed Kenya's government into a _de facto_ ethnostate where only his ethic group had access to services and opportunity. Rwanda is more complicated. the first spike is the time period directly after Rwanda gained independence and was mared by colonial era ethic hatred. The second spike was the Rwandan genocide that started in 1994. The genocide was once again fueled by colonial era hatred. I am genuinely shocked that Somalia did not have an increase in childhood morality in the early nineties due to a combination of war, famine, and drought. 
+Here we see the first two countries with increases in childhood mortality; Uganda, Kenya, and Rwanda. The increase in mortality in Uganda and Kenya both align the rise of brutal dictorships in these two countries. Idi Amin came to power by coup in Uganda in 1971 and was overthrown himself in 1980. Similarly, Daniel Moi came to power in 1978 in Kenya and by 1986 had transformed Kenya's government into a _de facto_ ethnostate where only his ethic group had access to services and opportunity. Rwanda is more complicated. the first spike is the time period directly after Rwanda gained independence and was mared by colonial era ethic hatred. The second spike was the Rwandan genocide that started in 1994. The genocide was once again fueled by colonial era hatred. South Africa saw an increase in childhood morality post-apartheid and the massive cultural shifts that came with end of apartheid. I am genuinely shocked that Somalia did not have an increase in childhood morality in the early nineties due to a combination of war, famine, and drought. It should be noted that these countries are making progress, but it seems to be much harder or slower to make progress relative to the rest of the world. 
 
