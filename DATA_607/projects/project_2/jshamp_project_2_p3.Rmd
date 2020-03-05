@@ -117,7 +117,8 @@ DT::datatable(df_immg,
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
-                         fixedHeader=TRUE))
+                         fixedHeader=TRUE,
+                         pageLength = 5))
 ```
 
 
@@ -125,15 +126,16 @@ DT::datatable(df_immg,
 
 ### Migration Data Pipeline
 
-Now that our process is in place, I'll bring in and tidy several other years; 2000, 2005, 2010, and 2015. 
+Now that our process is in place, I'll bring in and tidy several other years; 1995, 2000, 2005, 2010, and 2015. 
 
 ```{r}
 urls<-c(
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_1995.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2k.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2005.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2010.csv",
   "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/data/un_immg_2015.csv")
-data_years<-c(2000,2005,2010,2015)
+data_years<-c(1995,2000,2005,2010,2015)
 
 for (i in 1:length(data_years)){
 
@@ -148,17 +150,17 @@ for (i in 1:length(data_years)){
     rename(                                    # replace unruly names
       destination = Major.area..region..country.or.area.of.destination,
       inbound_total = Country.of.origin) %>%
-    replace(is.na(.), 0)                     # replacing NA with zero
+    replace(is.na(.), 0)                       # replacing NA with zero
 
   df_immg_i<-rename.columns(df_immg_i,
                           row_idx = 1,
                           col_start = 3)[2:length(df_immg_i), 1:234]
 
   df_immg_i<-df_immg_i %>%
-      pivot_longer(                       # gather columns to rows
+      pivot_longer(                           # gather columns to rows
                    -c("destination",
                       "inbound_total"),
-                   names_to = "origin",    # naming params
+                   names_to = "origin",       # naming params
                    values_to = "total",
                    names_repair = "unique") %>%
       mutate(total = str_remove_all(total, " ")) %>%
@@ -175,14 +177,15 @@ DT::datatable(df_immg,
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
-                         fixedHeader=TRUE))
+                         fixedHeader=TRUE,
+                         pageLength = 5))
 ```
 
 That's one huge dataframe - 277,240 rows. I understand that this should be stored on a SQL server, but Rstudio can still handle this sized data so I'm keeping it here for now. 
 
 ## Analysis 
 
-the discussion post talks about looking at migration patterns for the United States. Where are people coming to the US from and where are Americans going. 
+The discussion post talks about looking at migration patterns for the United States. Where are people coming to the US from and where are Americans going. 
 
 ## Who is coming to North America?
 
@@ -203,7 +206,8 @@ DT::datatable(df,
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
-                         fixedHeader=TRUE))
+                         fixedHeader=TRUE,
+                         pageLength = 5))
 ```
 
 Looks like the US got lumped into Northern America after 2005. At least for Afghanistan - Let's check with another example. 
@@ -222,7 +226,8 @@ DT::datatable(df,
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
-                         fixedHeader=TRUE))
+                         fixedHeader=TRUE,
+                         pageLength = 5))
 ```
 
 Ok so this is disappointing. Northern America has become a catch all for Canada and the United States some time after 2000. It's going to be hard to split this into which exact country each nationality immigrated to if the US and Canada are grouped together. 
@@ -239,7 +244,8 @@ DT::datatable(df,
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
-                         fixedHeader=TRUE))
+                         fixedHeader=TRUE,
+                         pageLength = 5))
 ```
 
 Mexico dominates the migration in-flows to the US and Canada, as expected. The more recent numbers from China and India are the next closest. The numbers for Mexico do seem to ebb-and-flow though. The migration numbers surged in 2000 and dropped by 2005 only to surge again by 2015.   
@@ -252,7 +258,9 @@ df_immg %>%
                                                          "Philippines")) %>%
   select(year,origin, total) %>%
   ggplot() +
-  geom_line(aes(x=year, y=total, group=origin, color=origin))
+  geom_line(aes(x=year, y=total, group=origin, color=origin))+
+  labs(x="Year", y="Total Migration", title="Migration to Northern America")
+
 ```
 
 We see here that there was general decrease in migration between 2000 and 2005 and a return to increases in 2015 for the top origin nations. Clearly, Mexico is far apart from the rest of the field. 
@@ -274,10 +282,27 @@ df_immg %>%
   arrange(desc(total)) %>%
   slice(1:7) %>%
   ggplot() +
-  geom_line(aes(x=year, y=total, group=destination, color=destination))
+  geom_line(aes(x=year, y=total, group=destination, color=destination)) +
+  labs(x="Year", y="Total Migration", title="Migration from the United States")
 ```
 
 We see a similar trend of people leaving the US and Canada as we saw coming into the United States. A little dip between 2000 and 2005, followed by a surge in 2015. 
 
+### Afghanistan Revisited
 
+In part 2 I initially looked at the childhood mortality of Afghanistan and I would like to circle back to Afghanistan in terms of mirgration. This is especially topical since the US has recently signed a peace agreement with the Taliban. This agreement will likely end our involvement in the country having _not_ defeated the organization that initially brought the US to Afghanistan. Let's see the mirgrantion pattern. 
 
+```{r}
+df_immg %>%
+  filter(origin=="Afghanistan" & destination =="WORLD") %>%
+  select(year, origin, destination, total) %>%
+  group_by(year, destination) %>%
+  summarise(total = sum(total)) %>%
+  arrange(desc(total)) %>%
+  slice(1:7) %>%
+  ggplot() +
+  geom_line(aes(x=year, y=total, group=destination, color=destination)) +
+  labs(x="Year", y="Total Mirgration", title="Mirgration from Afghanistan")
+```
+
+The end of the Soviet incursion into Afghanistan led to huge numbers of people leaving the country in 1990. This migration trend tappered consistently until the rise of the Taliban in the mid-1990s. We see again, a drop in migration after the US invaded the country and another inflection upwards after the US's involvement in Afghanistan had become a stalemate. 
