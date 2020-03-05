@@ -3,10 +3,8 @@ title: "Data 605 HW 6"
 author: "Jeff Shamp"
 date: "`r Sys.Date()`"
 output:
-  prettydoc::html_pretty:
-    theme: material
-    highlight: vignette
-
+  pdf_document
+    
 ---
 
 1. A box contains 54 red marbles, 9 white marbles, and 75 blue marbles. If a marble is randomly selected from the box, what is the probability that it is red or blue? Express your answer as a fraction or a decimal number rounded to four decimal places.
@@ -107,37 +105,72 @@ Step 1. Find the expected value of the proposition. Round your answer to two dec
 
 **binomial probability expected value.**
 
-$\mu = np = 4*\frac{1}{2} = 2$ **The expected value of flipping a coin four times and getting heads is 2, which is a loss!**
+First we need the probability of throwing exactly three heads in four attempts (winning).
+
+$\binom{4}{3}*\frac{1}{2}^{3}*\frac{1}{2}=4*\frac{1}{4}*\frac{1}{2}=\frac{1}{4}$
+
+And the probability of losing is $1-P(win)=\frac{3}{4}$
+
+Expected value to win or lose for one trial is simply $P(win)*Win_{amount} + P(lose)*Lose_{amount}$
+
+$\mu = 97*\frac{1}{4}- 30*\frac{3}{4}= 1.75\$$.  
+
+**The expected value of flipping a coin four times and getting three heads is 1.75, which is a net win!**
 
 Step 2. If you played this game 559 times how much would you expect to win or lose? (Losses must be entered as negative.)
 
+Since these events are indepedent, the expected win/loss scales linearly.
 
+$559*1.75= 978.35$!
 
 
 12. Flip a coin 9 times. If you get 4 tails or less, I will pay you \$23. Otherwise you pay me \$26. 
 
 Step 1. Find the expected value of the proposition. Round your answer to two decimal places.
 
+**binomial probability** A bit more involved this time, but the same idea as before. Winning is getting 1,2,3,or 4 tails in 9 attempts. 
 
+$P(win)=\binom{9}{1}*\frac{1}{2}^{1}*\frac{1}{2}^{8} + \binom{9}{2}*\frac{1}{2}^{2}*\frac{1}{2}^{7}+\binom{9}{3}*\frac{1}{2}^{3}*\frac{1}{2}^{6}+\binom{9}{4}*\frac{1}{2}^{4}*\frac{1}{2}^{5} =0.50$
+
+$P(lose)= 0.5$
+
+$\mu = 23*.5 - 26*.5 = -\$1.5$ **A net loss!**
 
 Step 2. If you played this game 994 times how much would you expect to win or lose? (Losses must be entered as negative.)
 
-
+$-1.5*994=-\$1491$ **ouch**
 
 13. The sensitivity and specificity of the polygraph has been a subject of study and debate for years. A 2001 study of the use of polygraph for screening purposes suggested that the probability of detecting a liar was .59 (sensitivity) and that the probability of detecting a "truth teller" was .90 (specificity). We estimate that about 20% of individuals selected for the screening polygraph will lie.
 
+
+From the information we are given, we know that the probability of detecting a liar is 0.118 and the probability of passing a truth-teller is 0.72. We can use sensitivity and specificity to determine the probabilty of passing a liar and the probability of (falsely) detecting a truth. 
+
+Here Lie are positive cases and truths are negatives and passing is not being detected as a lie, whereas detecting is the ploygraph claims someone as lied. 
+
+$specificity = \frac{True truth}{True truth + False Lie}$, which reduces to $0.90 = \frac{0.72}{0.72 + x)}$ thus,  $P(pass | Lie) = 0.082$
+
+$sensitivity = \frac{True lie}{False Lie + True Lie}$ whicc is $0.59 = \frac{0.118}{y + 0.118}$ thus, $P(detect | truth) = 0.08$
+
+Now we have all the possible outcome probabilities we can answer the questions
+
 a. What is the probability that an individual is actually a liar given that the polygraph detected him/her as such? (Show me the table or the formulaic solution or both.)
+
+This is probability of being detected as a liar, which is both the actual liars and the truth-tellers falsely detected. 
+
+$P(Lie | detect) = \frac{P(detect|Lie)}{P(detect|lie)+P(detect | Truth)} = \frac{0.118}{0.118+0.08} = .595$
 
 
 
 b. What is the probability that an individual is actually a truth-teller given that the polygraph detected him/her as such? (Show me the table or the formulaic solution or both.)
 
+$P(truth |pass)= \frac{P(pass|truth)}{P(pass|truth)+P(pass|lie)}=\frac{.72}{.72+0.082}= 0.897$
+
 
 
 c. What is the probability that a randomly selected individual is either a liar or was identified as a liar by the polygraph? Be sure to write the probability statement.
 
-
-
+This is the sum of all people who either lie or were detected (falsely). 
+$P(detect|lie) + P(pass|lie) + P(detect|truth) = .118+.08+.082 = .28$
 
 
 
