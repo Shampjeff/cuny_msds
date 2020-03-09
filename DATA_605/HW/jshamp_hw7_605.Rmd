@@ -1,0 +1,107 @@
+---
+title: "Data 605 HW 7"
+author: "Jeff Shamp"
+date: "3/9/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem Set #1
+
+**Let X1, X2, . . . , Xn be n mutually independent random variables, each of which is uniformly distributed on the integers from 1 to k. Let Y denote the minimum of the Xi’s. Find the distribution of Y.**
+
+This is kind of an amazing result. The distribution of the minimum number of Xi's can expressed in a simple quotient. 
+
+The sample space here is the $k^{n}$ since there are Xn variables uniformly distributed from 1 to k. We can then use, effectively, the _compliment principal_ to determine an expression for each Y value. If Y=1 we get $k^{n} - (k-1)^{n}$. This the sample space minus all the Xi's that are NOT equal to Y=1. We can pull a similar trick for Y=2, that is find all the Xi's that are not Y=1 or Y=2 and subtract that form the sample space. 
+Thus, $k^{n} - (k-2)^{n} - (k^{n} - (k-1)^{n})$. If you distribute the negative sign through the last term (for Y=1), we see that the $k^{n}$ terms cancel out (which makes sense, it's the entire space) and we are left with $(k-1)^{n} - (k-2)^{n}$. 
+
+We can do this again for Y=3 and get $k^{n} - (k-3)^{n} - ((k-1)^{n} - (k-2)^{n}) - (k^{n} - (k-1)^{n})$. Again, distribute the negative and combine like terms and this reduces to $(k-2)^{n} - (k-3)^{n}$. We can safely generalize this result to $(k-j+1)^{n} - (k-j)^{n}$ for all _j_ between 1 and k integers. 
+
+To find the distribution, we simply divide by the space of possiblities. $m(j) = \frac{(k-j+1)^{n} - (k-j)^{n}}{k^{n}}$ for all _j_ between 1 and k integers. So much of math is pattern matching...
+
+
+# Problem Set #2
+
+Your organization owns a copier (future lawyers, etc.) or MRI (future doctors). This machine has a manufacturer’s expected lifetime of 10 years. This means that we expect one failure every ten years. (Include the probability statements and R Code for each part).
+
+**What is the probability that the machine will fail after 8 years?. Provide also the expected value and standard deviation. Model as a geometric. (Hint: the probability is equivalent to not failing during the first 8 years..)**
+
+$E(X)=\frac{1}{p}$ and $\sigma=\sqrt{\frac{1-p}{p^{2}}}$
+
+```{r}
+p<-1/10
+E_x<-1/p
+sd<-sqrt((1-p)/p^2)
+paste("Expected value:",E_x, "sd: ",sd)
+```
+
+R has a nice built in function to evaluate probabilities. 
+
+```{r}
+paste("probability of failure in 8 years: ",pgeom(8, p, lower.tail = F))
+```
+
+
+**b. What is the probability that the machine will fail after 8 years?. Provide also the expected value and standard deviation. Model as an exponential.**
+
+$\lambda e^{-(\lambda x)}$
+
+```{r}
+lambda<-1/10
+x<-8
+paste("probability of failure in 8 years: ",exp(-lambda*x))
+```
+
+```{r}
+E_x<-1/lambda
+sd<-sqrt(1/lambda^2)
+paste("Expected value:",E_x, "sd: ",sd)
+```
+
+
+**c. What is the probability that the machine will fail after 8 years?. Provide also the expected value and standard deviation. Model as a binomial. (Hint: 0 success in 8 years)**
+
+```{r}
+n <- 8
+p <- 1/10
+comp <- 1-p
+k <- 0
+E_x<-n*p
+sd<-sqrt(n*p*comp)
+paste("probability of failure in 8 years: ",dbinom(k, n, p))
+```
+
+```{r}
+paste("Expected value:",E_x, "sd: ",sd)
+```
+
+
+d. What is the probability that the machine will fail after 8 years?. Provide also the
+expected value and standard deviation. Model as a Poisson. 
+
+
+```{r}
+lambda <- 10
+paste("probability of failure in 8 years: ",dpois(8, lambda = lambda))
+```
+
+For Poisson lambda is the expected value and variance. Thus,
+
+```{r}
+paste("Expected value:",lambda, "sd: ",sqrt(lambda))
+```
+
+
+
+
+
+
+
+
+
+
+
+

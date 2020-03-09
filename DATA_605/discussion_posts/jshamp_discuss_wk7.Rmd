@@ -1,0 +1,33 @@
+---
+title: "jshamp_discussion_wk7"
+author: "Jeff Shamp"
+date: "3/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# When to use which probability function
+
+As I am learning R for the first time, I often ask for these posts how to do something better or more efficiently. For this post, I have a question about some built in R functions. 
+
+For all of these probability functions we are typically presented with several options in R to solve for the probability. I come to this class having a long background in math, but not so much in coding with R. As such, I am often a bit confused with the options and I find that documentation is often lacking a human's touch for explanation. 
+
+Can someone with a soul explain the difference between following functions. I'll give the example of Poisson Distribution (I know what lambda is):
+
+-dpois(x, lambda)
+-ppois(q,lambda)
+-qpois(p, lambda)
+-rpois(n, lambda)
+
+I see that they are denisty, distribution, quantile, and random variants for Poisson, but when and how do we use these to calculate probabilities or AUC's? Is it possible to get the same answer, as a probability, using ppois, dpois, or qpois? How? Why does R make the distinction? 
+
+Here is what I did for the last question on the HW and it is consistent with doing to problem by hand to calculate the probability
+
+```{r}
+lambda <- 10
+paste("probability of failure in 8 years: ",dpois(8, lambda = lambda))
+```
+
