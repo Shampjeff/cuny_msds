@@ -6,26 +6,64 @@ output:
   prettydoc::html_pretty:
     theme: architect
     highlight: vignette
+# params:
+#   pwd:  
 ---
 
 
 ```{r setup, include=FALSE}
 library(tidyr)
 library(dplyr)
+library(dbplyr)
 library(ggplot2)
 library(stringr)
 library(RCurl)
+library(RMySQL)
 ```
 
-Using **tidyr, dplyr, ggplot2, stringr, RCurl**
+Using **tidyr, dplyr, dbplyr, RMySQL, ggplot2, stringr, RCurl**
 
 # UN Immigration Data
 
 I will be using the data source from Subhalaxmi Rout regarding UN Migrartion Data. 
 
-This data set is huge, so I'm only looking at one table, which cooresponds to the year 1990. Once a pipline can be established, I can tidy a few more tables, join them and look at some trends. At first, here is a look at the data in a mostly raw form. 
+This data set is huge, so I'm only looking at one table, which cooresponds to the year 1990. Once a pipline can be established, I can tidy a few more tables, join them and look at some trends. 
+
+## SQL Server for Data
+
+There is a lot of data here so it will make sense to store the results of the tidying on SQL server. I have turned on my GCP SQL server (which is password protected) for this. If you would like to reproduce this work from stratch, please ask for the password. The creation of the DB table can be done from RMySQL, which is nice. The code creating the DB is below in markdown since I only needed to run the code once to create the `UN_immg` DB. 
+
+```markdown
+conn <-
+    dbConnect(
+      RMySQL::MySQL(),
+      username = "root",
+      password = rstudioapi::askForPassword("Database password"),
+      host = '34.68.193.229'
+    )
+dbSendQuery(conn, "CREATE DATABASE UN_immg;")
+```
+
+Once created the table `UN_immg` I can use the following connection to the `UN_immg` DB name. 
+
+```{r}
+conn<-
+      dbConnect(
+      RMySQL::MySQL(),
+      username = "root",
+      password = rstudioapi::askForPassword("Database password"),
+      # For Rmd use: rstudioapi::askForPassword("Database password")
+      # For knitting use params$pwd
+      host = '34.68.193.229',
+      dbname = "UN_immg"
+    ) 
+dbSendQuery(conn, "USE UN_immg")
+```
+
 
 ## Load Data
+
+The data comes from a massive excel file with multiple tables. I'll start with one table from 1990. This is an excerpt of its initial state.
 
 ```{r}
 m<-getURL(
@@ -121,7 +159,6 @@ DT::datatable(df_immg,
                          pageLength = 5))
 ```
 
-
 57,536 rows with many repeat values and destinations. Is this really _more_ tidy? 
 
 ### Migration Data Pipeline
@@ -181,7 +218,17 @@ DT::datatable(df_immg,
                          pageLength = 5))
 ```
 
-That's one huge dataframe - 277,240 rows. I understand that this should be stored on a SQL server, but Rstudio can still handle this sized data so I'm keeping it here for now. 
+
+That's one huge dataframe - 334,776 rows. I've written it to a SQL Server for faster handling of the data. It is rendered in markdown below because I only need to write the data to `UN_immg` DB once. Once all the data was written to a database, I can reassign the variable `df_immg` to the `dbplyr` function `tbl()` and all my data wrangling will be sent as SQL queries to the database. Pretty nice feature. 
+
+```markdown
+dbWriteTable(conn = conn, name = "UN_immg", value = df_immg)
+```
+
+```{r}
+df_immg<-tbl(conn, "UN_immg")
+```
+
 
 ## Analysis 
 
@@ -191,7 +238,7 @@ The discussion post talks about looking at migration patterns for the United Sta
 
 First, let's look at some data integrity and make sure that the US is listed in a consistent format. 
 
-```{r}
+```{r, warning=FALSE}
 df<-df_immg %>%
   filter(origin=="Afghanistan" & destination %in% c(
                                                     "Northern America",
@@ -202,9 +249,9 @@ df<-df_immg %>%
   group_by(year, destination) %>%
   summarise(total = sum(total))
 
-DT::datatable(df, 
+DT::datatable(as.data.frame(df),
          extensions = c('FixedColumns',"FixedHeader"),
-          options = list(scrollX = TRUE, 
+          options = list(scrollX = TRUE,
                          paging=TRUE,
                          fixedHeader=TRUE,
                          pageLength = 5))
@@ -212,7 +259,7 @@ DT::datatable(df,
 
 Looks like the US got lumped into Northern America after 2005. At least for Afghanistan - Let's check with another example. 
 
-```{r}
+```{r, warning=F}
 df<-df_immg %>%
   filter(origin=="Germany" & destination %in% c("Northern America",
                                                 "United States of America", 
@@ -222,9 +269,9 @@ df<-df_immg %>%
   group_by(year, destination) %>%
   summarise(total = sum(total))
 
-DT::datatable(df, 
+DT::datatable(as.data.frame(df),
          extensions = c('FixedColumns',"FixedHeader"),
-          options = list(scrollX = TRUE, 
+          options = list(scrollX = TRUE,
                          paging=TRUE,
                          fixedHeader=TRUE,
                          pageLength = 5))
@@ -233,14 +280,14 @@ DT::datatable(df,
 Ok so this is disappointing. Northern America has become a catch all for Canada and the United States some time after 2000. It's going to be hard to split this into which exact country each nationality immigrated to if the US and Canada are grouped together. 
 
 
-```{r}
+```{r, warning=F}
 df<-df_immg %>%
   filter(destination == "Northern America" & total >0) %>%
   select(year, origin, total) %>%
   group_by(year, origin) %>%
   arrange(desc(total))
 
-DT::datatable(df, 
+DT::datatable(as.data.frame(df), 
          extensions = c('FixedColumns',"FixedHeader"),
           options = list(scrollX = TRUE, 
                          paging=TRUE,
@@ -270,7 +317,7 @@ We see here that there was general decrease in migration between 2000 and 2005 a
 The regional groupings obviously take up a lot of the top values, but we can exclude some of them to get the board strokes of where Americans are mirgrating to. Again, people from the US are headed to Mexico, Central America, Latin America, and the Caribbean in large scale. 
 
 ```{r,fig.width=8, fig.height=5}
-df_immg %>%
+df_plot<-df_immg %>%
   filter(origin=="United States of America" & 
          destination !="WORLD" & 
          destination !="Developing regions" & 
@@ -280,9 +327,11 @@ df_immg %>%
   group_by(year, destination) %>%
   summarise(total = sum(total)) %>%
   arrange(desc(total)) %>%
-  slice(1:7) %>%
+  collect() %>%
+  slice(1:7)
+
   ggplot() +
-  geom_line(aes(x=year, y=total, group=destination, color=destination)) +
+  geom_line(data=df_plot,aes(x=year, y=total, group=destination, color=destination)) +
   labs(x="Year", y="Total Migration", title="Migration from the United States")
 ```
 
@@ -299,10 +348,11 @@ df_immg %>%
   group_by(year, destination) %>%
   summarise(total = sum(total)) %>%
   arrange(desc(total)) %>%
+  collect() %>%
   slice(1:7) %>%
   ggplot() +
   geom_line(aes(x=year, y=total, group=destination, color=destination)) +
   labs(x="Year", y="Total Mirgration", title="Mirgration from Afghanistan")
 ```
 
-The end of the Soviet incursion into Afghanistan led to huge numbers of people leaving the country in 1990. This migration trend tappered consistently until the rise of the Taliban in the mid-1990s. We see again, a drop in migration after the US invaded the country and another inflection upwards after the US's involvement in Afghanistan had become a stalemate. 
+The end of the Soviet incursion into Afghanistan led to huge numbers of people leaving the country in 1990. This migration trend until the rise of the Taliban in the mid-1990s. We again see a drop in migration after the US invaded the country and another inflection upwards after the US's involvement in Afghanistan had become a stalemate. 

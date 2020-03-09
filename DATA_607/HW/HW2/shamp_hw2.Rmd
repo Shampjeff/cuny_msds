@@ -72,6 +72,7 @@ key_set(service = "gcp-db",
         username = "root")
 user_id<- key_list("gcp-db")[1,2]
 password<- key_get("gcp-db", "root")
+user_id
 ```
 
 This is a function to return an R dataframe from a GCP SQL database. This makes data access more reusable. 
