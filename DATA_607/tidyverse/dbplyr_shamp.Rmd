@@ -7,7 +7,7 @@ output:
     theme: architect
     highlight: github
 params:
-  pwd: 
+  pwd: "data607"
 ---
 
 ```{r setup, include=FALSE}
@@ -17,15 +17,17 @@ library(dbplyr)
 library(ggplot2)
 library(RCurl)
 library(RMySQL)
+library(stringr)
 ```
 
 # dbplyr - Out-Source Your Data With TidyVerse 
 
 **dbplyr is a great tool for unloading heavy amounts of data from RStudio and onto a SQL server. dbplyr is good choice when:**
--You have a data heavy environment that is slowing down your local machine
--Your knits are taking forever
--You have many files that access the same data and you don't want to reload from csv everytime
--You are working in a group
+
+  * You have a data heavy environment that is slowing down your local machine
+  * Your knits are taking forever
+  * You have many files that access the same data and you don't want to reload from csv everytime
+  * You are working in a group
 
 ## Set Up
 
@@ -42,7 +44,7 @@ You will need another package to access the SQL server of your choice. dbplyr wo
 Before we can get to dbplyr we need data and a SQL instance to tap into. Below is a very easy set up using the `RMySQL` package. You only need to use the follow code chunk once and the DB will be there as long as you keep it on your SQL server. One of the many wonderful things about storing and accessing data this way is that you only need to create one cloud instance and R and RMySQL can handle the rest - this is far superior to using MySQL workbench or some other software on your local machine. 
 
 ```markdown
-conn <-                                      # Create a connection to your SQL server
+conn <-                 # Create a connection to your SQL server
     dbConnect(
       MySQL(),
       username = "root",
@@ -51,7 +53,8 @@ conn <-                                      # Create a connection to your SQL s
       # For knitting use password$pwd
       host = '34.68.193.229'
     )
-dbSendQuery(conn, "CREATE DATABASE Congress_v_Trump;")  # Create a DB using a SQL query. 
+# Create a DB using a SQL query. 
+dbSendQuery(conn, "CREATE DATABASE Congress_v_Trump;")  
 ```
 
 Next, let the server know you intend to use the DB you created. If starting a new session (after creating the data), establish a connection and identify the database name. 
@@ -61,13 +64,13 @@ conn <-
     dbConnect(
       MySQL(),
       username = "root",
-      password = rstudioapi::askForPassword("Database password"),
-      # For rmd on github use: rstudioapi
-      # For knitting use password$pwd
-      host = '34.68.193.229', 
+      password = params$pwd,
+      # For rmd on github use: rstudioapi::askForPassword("Database password")
+      # For knitting use params$pwd
+      host = '34.68.193.229',
       dbname = "Congress_v_Trump"
     )
-#dbSendQuery(conn, "USE Congress_v_Trump")
+
 ```
 
 The data is stored on a `.csv` file and we can load the `.csv` as dataframe and use `RMySQL` to write that dataframe to our cloud database.
@@ -105,12 +108,48 @@ DT::datatable(as.data.frame(df),
                          pageLength = 5))
 ```
 
-Now we are ready to use dbplyr very much like we can use dplyr!
+Now we are ready to use dbplyr to query the database!
 
+Let's start with a simple SQL query as an example. We will find a given individual and aggregate their average agreement (agree_pct) with the president and their average number of votes in alignment with the president (net_trump_vote). 
 
+```{r, warning=F}
+df %>%
+  filter(last_name == "Sanders") %>%
+  select(state, party, agree_pct, net_trump_vote) %>%
+  group_by(state) %>%
+  summarize(avg_agree = mean(agree_pct), avg_net_trump_vote = mean(net_trump_vote))
+```
 
+If we want to do more data cleaning and have the full use of tidyr or dplyr functions we will need to use dbplyr to pull down a subset of the database and store it in local memory. **Note:** Use the `collect()` function to save to the local memory. Also use `collect()` to make use of the `slice()` function to limit results. 
 
+```{r}
+df_subset<-df %>%
+  select(last_name, state, party, agree_pct, net_trump_vote) %>%
+  collect()          
 
+DT::datatable(df_subset,
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 5))
+```
+
+Once in local memory we can use things like mutate, or other tidyverse packages like stringr. 
+
+```{r}
+DT::datatable(df_subset %>%
+                mutate(party=str_replace_all(party, "^R$", "Republican"))%>%
+                mutate(party=str_replace_all(party, "^D$", "Democrat")) %>%
+                mutate(party=str_replace_all(party, "^I$", "Independent")),
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 5))
+```
+
+dbplyr is a great way to explore and refined data like in SQL before loading into R for data processing and analysis. 
 
 
 
