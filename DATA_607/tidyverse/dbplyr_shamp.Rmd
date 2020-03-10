@@ -6,8 +6,7 @@ output:
   prettydoc::html_pretty:
     theme: architect
     highlight: github
-params:
-  pwd: "data607"
+
 ---
 
 ```{r setup, include=FALSE}
@@ -64,7 +63,7 @@ conn <-
     dbConnect(
       MySQL(),
       username = "root",
-      password = params$pwd,
+      password = rstudioapi::askForPassword("Database password"),
       # For rmd on github use: rstudioapi::askForPassword("Database password")
       # For knitting use params$pwd
       host = '34.68.193.229',
@@ -120,6 +119,29 @@ df %>%
   summarize(avg_agree = mean(agree_pct), avg_net_trump_vote = mean(net_trump_vote))
 ```
 
+Let's look at another example, looking at the same agreement value for all Democrats. I'm wrapping this in an html display for readibility. 
+
+```{r}
+DT::datatable(as.data.frame(
+  # dbplyr query
+  df %>%               
+    filter(party == "D" | party == "Democrat") %>%
+    select(state, last_name, agree_pct, net_trump_vote) %>%
+    group_by(last_name, state) %>%
+    summarize(max_agree = max(agree_pct, na.rm=T),
+            max_net = max(net_trump_vote, na.rm=T))),
+  # display parameters
+     extensions = c('FixedColumns',"FixedHeader"),
+     options = list(scrollX = TRUE,
+                    paging=TRUE,
+                    fixedHeader=TRUE,
+                    pageLength = 7))
+```
+
+
+
+
+
 If we want to do more data cleaning and have the full use of tidyr or dplyr functions we will need to use dbplyr to pull down a subset of the database and store it in local memory. **Note:** Use the `collect()` function to save to the local memory. Also use `collect()` to make use of the `slice()` function to limit results. 
 
 ```{r}
@@ -149,7 +171,7 @@ DT::datatable(df_subset %>%
                          pageLength = 5))
 ```
 
-dbplyr is a great way to explore and refined data like in SQL before loading into R for data processing and analysis. 
+dbplyr is a great way to explore and refined data like you would in SQL before loading into R for data processing and analysis. 
 
 
 
