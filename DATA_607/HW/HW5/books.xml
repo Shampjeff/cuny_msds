@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<booklist>
+   <book>
+       <title>Good Night Good Night Construction Site</title>
+       <authors>
+         <a_one>Sherri Duskey Rinker</a_one>
+         <a_two>Tom Lichtenheld</a_two>
+       </authors>
+       <isbn>978-1452111735</isbn>
+       <amazon_rating>5/5</amazon_rating>
+       <age_range>2-4</age_range>
+   </book>
+      <book>
+       <title>Wakem the Rooster: Up All Night</title>
+       <authors>
+         <a_one>David FitzSimmons</a_one>
+         <a_two>Robert Cowdrey</a_two>
+       </authors>
+       <isbn>978-1936607013</isbn>
+       <amazon_rating>5/5</amazon_rating>
+       <age_range>3-5</age_range>
+   </book>
+      <book>
+       <title>Good night, Gorilla</title>
+       <authors>Peggy Rathman</authors>
+       <isbn>978-0698116498</isbn>
+       <amazon_rating>4.5/5</amazon_rating>
+       <age_range>2-4</age_range>
+   </book>
+</booklist>
