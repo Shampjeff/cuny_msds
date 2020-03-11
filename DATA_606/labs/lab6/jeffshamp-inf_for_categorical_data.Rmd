@@ -70,8 +70,6 @@ the same number using the `atheism` data.
     responses. Does it agree with the percentage in Table 6? If not, why?
 
 ```{r us-atheism, eval=TRUE}
-library(dplyr)
-library(tidyr)
 us12 <- subset(atheism, nationality == "United States" & year == "2012")
 us12_ath_count<-count(subset(us12, response=="atheist"))
 paste("percent atheist in US:",us12_ath_count/dim(us12)[1])
