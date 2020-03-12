@@ -8,54 +8,62 @@ output:
     highlight: vignette
 ---
 
-```{r, warning=F}
-library(RJSONIO)
+```{r, include=FALSE}
+library(rjson)
 library(RCurl)
 library(dplyr)
 library(rvest)
-library(xml2)
+library(XML)
 ```
 
+# Load Data Source: JSON, XML, HTML
+
+I choose three children's books as that is basically all I read these day outside of grad school reading. I'll start with most annoying and difficult data to read, JSON.
+
+**Using the following packages: rjson, RCurl, rvest, and XML**
+
+## JSON
 
 ```{r,warning=F}
-json_url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books.json"
-books_json<- fromJSON(json_url)
-books_json<- lapply(books_json, function(x){unlist(x)})
-book_json<-as.data.frame(do.call("cbind", books_json))
+json_url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books_json_v2.json"
+books_json<- fromJSON(file = json_url)
+# The json has lists for authors that need to be unlisted
+books_json<-lapply(books_json, function(x){unlist(x)})  
+# binding the lists together
+books_json<-do.call("cbind",books_json)                  
+(books_json<-as.data.frame(books_json, stringsAsFactors = F))
 ```
 
-```{r, warning=F}
-DT::datatable(book_json,
-         extensions = c('FixedColumns',"FixedHeader"),
-          options = list(scrollX = TRUE,
-                         paging=TRUE,
-                         fixedHeader=TRUE,
-                         pageLength = 7))
-```
+Here we see that it is a dataframe after much esoteric cleaning functions. Books with multiple aurthors have been listed as two separate rows, making it the longest in terms of rows. Everything was loaded as a character in the dataframe.
 
+# HTML
+
+This is one of the most easy out-of-the-box solutions. HTML has tags for items that allow us to manage tabular data. The multiple authors are listed together but some work could be done to clean up the names and spacing. 
 
 ```{r}
-url<-read_html("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/booksd.html")
-
-book_html<-html_nodes(url, "table") %>% html_table(fill=T) 
-book_html<-book_html[[1]]
+url<-read_html(
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/booksd.html")
+# This is a one element list
+book_html<-html_table(html_nodes(url, "table"),fill=T)[[1]]    
+book_html
 ```
 
+## XML
 
+The `XML` package is fantasic and can cast XML tagged data. This dataframe is cast as factors. This is very similar to HTML but with fewer commas separating the author names. 
 
 ```{r}
-url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books.xml"
-# book_xml<-xml
-book_xml<-read_xml(url)
-book_xml<-xml_find_all(book_xml, "//book")
-```
-
-```{r}
-
+url<-getURL(
+  "https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books.xml")
+# Great features in XML package
+book_xml<-xmlToDataFrame(xmlParse(url))         
+book_xml
 ```
 
 
+## Insights
 
+R has some nice packages for the easy import of these data types, but the large variation in file type, format, and complexity make it challenging to have out-of-the-box solutions everytime. 
 
 
 
