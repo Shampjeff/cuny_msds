@@ -1,0 +1,62 @@
+---
+title: "JSON, XML, HTML in R"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+```{r, warning=F}
+library(RJSONIO)
+library(RCurl)
+library(dplyr)
+library(rvest)
+library(xml2)
+```
+
+
+```{r,warning=F}
+json_url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books.json"
+books_json<- fromJSON(json_url)
+books_json<- lapply(books_json, function(x){unlist(x)})
+book_json<-as.data.frame(do.call("cbind", books_json))
+```
+
+```{r, warning=F}
+DT::datatable(book_json,
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 7))
+```
+
+
+```{r}
+url<-read_html("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/booksd.html")
+
+book_html<-html_nodes(url, "table") %>% html_table(fill=T) 
+book_html<-book_html[[1]]
+```
+
+
+
+```{r}
+url<-"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_607/HW/HW5/books.xml"
+# book_xml<-xml
+book_xml<-read_xml(url)
+book_xml<-xml_find_all(book_xml, "//book")
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
