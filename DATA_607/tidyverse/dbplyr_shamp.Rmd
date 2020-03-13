@@ -49,7 +49,7 @@ conn <-                 # Create a connection to your SQL server
       username = "root",
       password = rstudioapi::askForPassword("Database password"),
       # For rmd on github use: rstudioapi
-      # For knitting use password$pwd
+      # For knitting use params$pwd
       host = '34.68.193.229'
     )
 # Create a DB using a SQL query. 

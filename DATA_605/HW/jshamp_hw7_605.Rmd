@@ -84,8 +84,8 @@ expected value and standard deviation. Model as a Poisson.
 
 
 ```{r}
-lambda <- 10
-paste("probability of failure in 8 years: ",dpois(8, lambda = lambda))
+lambda <- 0.8
+paste("probability of failure in 8 years: ",ppois(0, lambda = lambda))
 ```
 
 For Poisson lambda is the expected value and variance. Thus,

@@ -1,0 +1,172 @@
+---
+title: "Kaggle Survey Cleaning - Project 3"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# Kaggle DS survery 2019 - Clean and Write to DB
+
+This file is load the Kaggle Data Science Survey for 2019, cleans it, divides the questions into subsets, and writes the subsets to our project SQL server. 
+
+```{r, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(dbplyr)
+library(ggplot2)
+library(RCurl)
+library(RMySQL)
+library(stringr)
+```
+
+
+Below is the bulk data file. We don't know to drag around all the data all the time so I'm going to split this dataframe up into subsets and clean them up for easy tidying downstream. 
+
+```{r}
+file<-"/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/data/multiple_choice_responses.csv"
+df<-read.csv(file = file,sep = ",", stringsAsFactors = F, na.strings = T)
+df
+```
+
+The first table we want is the basic information; age, country, education level, company size, salary, experience level, etc. 
+
+```{r}
+df_basic<- df %>%
+  select(Q1:Q2,Q3:Q4,Q6:Q8, Q10,Q11,Q15) %>%
+  rename(age = Q1,         # custom name for columns
+         gender = Q2, 
+         country = Q3,
+         education = Q4,
+         company_size = Q6,
+         ds_team_size = Q7,
+         company_use_ml = Q8,
+         compensation_USD = Q10,
+         spend_ml_cloud_work_USD = Q11,
+         code_exp_years = Q15) %>%
+  slice(2:(dim(df_basic)[1])) %>%
+  mutate(                  # Following mutatations to clean formatting
+    country = str_replace_all(country,
+                "United Kingdom of Great Britain and Northern Ireland",
+                "United Kingdom")) %>%
+  mutate(company_size = str_remove_all(company_size, "employees")) %>%
+  mutate(education = str_remove_all(education, "degree")) %>%
+  mutate(education = str_remove_all(education, "[:punct:]")) %>%
+  mutate(compensation_USD = str_remove_all(compensation_USD, "[$]")) %>%
+  mutate(spend_ml_cloud_work_USD = str_remove_all(spend_ml_cloud_work_USD,"[$]")) %>%
+  mutate(spend_ml_cloud_work_USD = str_remove_all(spend_ml_cloud_work_USD,"\\(USD\\)")) %>%
+  mutate(code_exp_years= str_remove_all(code_exp_years, "years")) %>%
+  mutate(code_exp_years= str_replace_all(code_exp_years, "I have never written code", "None"))
+df_basic
+```
+
+A lot of columns end with a technology or choice so i'll rename the columns based the row selection choice. Also cleaning the column names to standard format. 
+
+```{r}
+rename.columns<- function(df){
+items<- rep(NA, dim(df)[2])
+for (i in 1:ncol(df)){
+  items[i]<- str_extract(df[1,i], "[-].*")
+  items[i]<- str_remove(items[i], "- Selected Choice -  |- Selected Choice -")
+  items[i]<- str_remove(items[i], "\\(.*\\)")
+  items[i]<- str_replace(items[i], "[:punct:]\\s", "")
+  items[i]<- str_remove_all(items[i], "\\s$|^\\s")
+  items[i]<- str_replace_all(items[i], "\\s", "_")
+  items[i]<- str_remove(items[i], "_$")
+  names(df)[names(df) == names(df[i])]<-items[i]
+}
+df<- df %>% slice(2:dim(df)[1])
+return(df)
+}
+```
+
+Rip throught the subsets for cleaning.
+
+```{r}
+# Primary Tool for DA at school/work
+df_prime_tool<- df %>% 
+  select(Q14 )%>%
+  slice(2:dim(df_prime_tool)[1]) %>%
+  rename(primary_analysis_tool = Q14)
+# ML year EXP
+df_ml_xp<- df %>% select(Q23) %>%
+  slice(2:dim(df_ml_xp)[1]) %>%
+  rename(ml_exp_years = Q23) %>%
+  mutate(ml_exp_years = str_remove_all(ml_exp_years, "years"))
+# language to learn first?
+df_lang_rec<- df%>% 
+  select(Q19) %>%
+  slice(1:dim(df_lang_rec)[1]) %>%
+  rename(rec_lang = Q19)
+#media sources for DS
+df_media<- df %>% select(Q12_Part_1:Q12_Part_12) %>%
+  slice(2:dim(df_media)[1]) %>%
+  rename(twiter = Q12_Part_1,
+         hacker_news = Q12_Part_2,
+         reddit = Q12_Part_3,
+         kaggle = Q12_Part_4,
+         course_forums = Q12_Part_5,
+         you_tube = Q12_Part_6,
+         podcast = Q12_Part_7,
+         blogs = Q12_Part_8,
+         journals = Q12_Part_9,
+         slack_communities = Q12_Part_10,
+         none = Q12_Part_11,
+         other = Q12_Part_12)
+# DS course work including University
+df_online_ed<- df %>% 
+  select(Q13_Part_1:Q13_Part_12) 
+df_online_ed<- rename.columns(df_online_ed) 
+# IDE
+df_ide <- df %>% 
+  select(Q16_Part_1:Q16_Part_12) 
+df_ide<-rename.columns(df_ide)
+# language
+df_lang<- df %>%
+  select(Q18_Part_1:Q18_Part_12) 
+df_lang<- rename.columns(df_lang)
+# data viz
+df_viz <- df %>% 
+  select(Q20_Part_1:Q20_Part_12) 
+df_viz<- rename.columns(df_viz) 
+# ML algo used regualrly
+df_ml_algo<- df %>%select(Q24_Part_1:Q24_Part_12) 
+df_ml_algo<-rename.columns(df_ml_algo)
+# ML Tools (e.g. AutoML)
+df_ml_tool<- df %>% select(Q25_Part_1:Q25_Part_8) 
+df_ml_tool<- rename.columns(df_ml_tool) 
+# CV tools
+df_cv<- df %>% select(Q26_Part_1:Q26_Part_7)
+df_cv<-rename.columns(df_cv)
+# NLP tools
+df_nlp<- df %>% select(Q27_Part_1:Q27_Part_6)
+df_nlp<- rename.columns(df_nlp)
+# Cloud platform
+df_cloud<- df %>% select(Q29_Part_1:Q29_Part_12)
+df_cloud<- rename.columns(df_cloud)
+# cloud products
+df_cloud_prod<- df %>% select(Q30_Part_1:Q30_Part_12)
+df_cloud_prod<- rename.columns(df_cloud_prod)
+# big data platform
+df_big_data<- df %>%select(Q31_Part_1:Q31_Part_12)
+df_big_data<- rename.columns(df_big_data)
+# cloud ML (e.g. Sagemaker)
+df_cloud_ml<- df %>% select(Q32_Part_1:Q32_Part_12)
+df_cloud_ml<- rename.columns(df_cloud_ml)
+# relational DB
+df_db<- df %>% select(Q34_Part_1:Q34_Part_12)
+df_db<- rename.columns(df_db)
+```
+
+
+
+
+
+
+
+
+
+
+
