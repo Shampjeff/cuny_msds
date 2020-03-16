@@ -27,8 +27,8 @@ Below is the bulk data file. We don't know to drag around all the data all the t
 
 ```{r}
 file<-"/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/data/multiple_choice_responses.csv"
-df<-read.csv(file = file,sep = ",", stringsAsFactors = F, na.strings = T)
-df
+df<-read.csv(file = file,sep = ",", stringsAsFactors = F, na.strings =T)%>% 
+  mutate_if(is.character, list(~na_if(.,""))) 
 ```
 
 The first table we want is the basic information; age, country, education level, company size, salary, experience level, etc. 
@@ -46,7 +46,7 @@ df_basic<- df %>%
          compensation_USD = Q10,
          spend_ml_cloud_work_USD = Q11,
          code_exp_years = Q15) %>%
-  slice(2:(dim(df_basic)[1])) %>%
+  slice(2:(dim(df)[1])) %>%
   mutate(                  # Following mutatations to clean formatting
     country = str_replace_all(country,
                 "United Kingdom of Great Britain and Northern Ireland",
@@ -88,21 +88,21 @@ Rip throught the subsets for cleaning.
 # Primary Tool for DA at school/work
 df_prime_tool<- df %>% 
   select(Q14 )%>%
-  slice(2:dim(df_prime_tool)[1]) %>%
+  slice(2:dim(df)[1]) %>%
   rename(primary_analysis_tool = Q14)
 # ML year EXP
 df_ml_xp<- df %>% select(Q23) %>%
-  slice(2:dim(df_ml_xp)[1]) %>%
+  slice(2:dim(df)[1]) %>%
   rename(ml_exp_years = Q23) %>%
   mutate(ml_exp_years = str_remove_all(ml_exp_years, "years"))
 # language to learn first?
 df_lang_rec<- df%>% 
   select(Q19) %>%
-  slice(1:dim(df_lang_rec)[1]) %>%
+  slice(1:dim(df)[1]) %>%
   rename(rec_lang = Q19)
 #media sources for DS
 df_media<- df %>% select(Q12_Part_1:Q12_Part_12) %>%
-  slice(2:dim(df_media)[1]) %>%
+  slice(2:dim(df)[1]) %>%
   rename(twiter = Q12_Part_1,
          hacker_news = Q12_Part_2,
          reddit = Q12_Part_3,
@@ -162,9 +162,28 @@ df_db<- rename.columns(df_db)
 
 
 
+```{r}
+df_basic %>%
+  ggplot() + 
+  geom_bar(aes(x=age),fill="lightblue")
+```
+
+```{r}
+df_basic
+```
+
+```{r}
+
+```
 
 
-
+```{r}
+df_basic %>%
+  filter(country=="United States of America" & compensation_USD != "NA") %>%
+  ggplot() + 
+  geom_bar(aes(x=compensation_USD),fill="lightblue") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
 
 
