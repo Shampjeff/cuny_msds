@@ -1,0 +1,26 @@
+---
+title: "Week 8 discussion"
+author: "Jeff Shamp"
+date: "3/17/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chebyshev's Inequality
+
+For the longest time I really never fully understood the value of Chebyshev's inequality. It just seemed like formalism without context to usefulness. For this week, I went in search of problem that could make this idea more meaningful. 
+
+I found this problem to be instructive for why Chebyshev's Inequality can be useful. 
+
+Suppose we extract an individual at random from a population whose members have an average income of \$40,000, with a standard deviation of \$20,000. What is the probability of extracting an individual whose income is either less than \$10,000 or greater than \$70,000? In the absence of more information about the distribution of income, we cannot compute this probability exactly. However, we can use Chebyshev's inequality to compute an upper bound to it. If X denotes income, then X is less than \$10,000 or greater than \$70,000 if and only if $|X - \mu | > k$.
+
+This nice because it is a meaningful context to me. Here $\mu = \$40000$ and $k=\$30000$. Chebyshev's Inequality becomes the following;
+
+$P( |X- \mu|) > k) \leq \frac{\sigma^{2}}{k^{2}} = \frac{4}{9}$
+
+ This is the upper bound on the probability that a randomly selected person will fall _outside_ the income range of 10K to 70K. Thus, there is a 44% maximum chance a randomly selected person will be outside this range. 
+ 
+ This is a really nice idea if you are interested in understand the maximum probability a given event can occur. 

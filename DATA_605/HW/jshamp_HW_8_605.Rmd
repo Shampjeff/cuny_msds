@@ -1,0 +1,100 @@
+---
+title: "HW 8 Data 605"
+author: "Jeff Shamp"
+date: "3/17/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 11 Page 303
+
+In general the expeccted value for exponential distributions are as follows:
+
+$E\left [ X_{i} \right ]= \frac{1}{\lambda_{i}}$. 
+
+For $X_{i}$ independent random variables we know that the expected value is simply:
+
+$E\left [ X_{i} \right ]= \frac{1}{1000}$
+
+If we are looking for the _first_ lightbuld to burn out then we are interested in the minimum of the $X_{i}$ from n=1 to n=100. For each lightbulb we have an expected value of $\frac{1}{1000}$ and using the ideas of CDF we can sum those values across all members of $X_{i}$ to find the minimum expected value of $X_{i}$ Resulting in:
+
+$\sum_{1}^{100}\lambda_{i}=\frac{100}{1000}=\frac{1}{10}$
+
+Thus, the minimum expected value is;
+
+$min(E\left [ X_{i} \right ])= \frac{1}{\frac{1}{10}}=10$. We can expect the first lightbulb to burn out in 10 hours. 
+
+## Problem 14 page 303
+
+This is a convolution problem for a difference of two random variable with the same exponential density, $f_{z}(z) = \lambda e^{(-\lambda z)}$
+
+Using the PDF ideas from the video we see that this be treated similarly, 
+
+$\int_{-\infty }^{\infty}f_{x1}(z-x) f_{x2}(x_{1})dx_{2}$
+
+
+Given that we already know $f_{x1}$ and $f_{x2}$ are the exponential density functions we can rewritte the above as the following.
+
+$\int_{-\infty }^{\infty}\lambda^{2}e^{-\lambda(z+2x_{x2})}e^{\lambda z}dx_{1}$
+
+As much as I love to do this integral by hand, the internet has told me that this nicely reduces to the following states;
+
+$f_{z}(z) =\left\{\begin{matrix}
+\frac{\lambda}{2} e^{\lambda z},  z<0 \\ 
+\frac{\lambda}{2} e^{-\lambda z},  z>0
+\end{matrix}\right.$
+
+This defines the desired outcome $\frac{\lambda}{2} e^{-\lambda \left | z \right |}$ *Note that $\lambda$ is negative for the positive z.
+
+
+## Problem 1 page 320
+
+Let X be a continuous random variable with mean µ = 10 and variance
+$\sigma^{2} = 100/3$. Using Chebyshev’s Inequality, find an upper bound for the
+following probabilities.
+
+a. $P(|X-10| \geq 2)$
+
+```{r}
+var <- 100/3
+k_square<-4
+upper<- var/k_square
+upper
+```
+
+Since this is a probability, we take it to be 1.
+
+b. $P(|X - 10|) \geq 5)$
+
+```{r}
+k_square<-25
+upper<- var/k_square
+upper
+```
+
+Again, this is a probability so we take it to be 1.
+
+c. $P(|X-10| \geq 9)$
+
+```{r}
+k_square<-81
+upper<- var/k_square
+upper
+```
+
+Upper bound is around 40%.
+
+
+d. $P(|X-10|\geq 20)$
+
+```{r}
+k_square<-400
+upper<- var/k_square
+upper
+```
+
+Upper bound is about 8%
+
