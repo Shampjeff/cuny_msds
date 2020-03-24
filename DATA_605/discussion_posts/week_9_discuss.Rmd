@@ -1,0 +1,35 @@
+---
+title: "JShamp week 9 discussion"
+author: "Jeff Shamp"
+date: "3/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Write a program to find the average of 1000 random digits 0, 1, 2, 3, 4, 5, 6, 7,
+8, or 9. Have the program test to see if the average lies within three standard
+deviations of the expected value of 4.5. Modify the program so that it repeats
+this simulation 1000 times and keeps track of the number of times the test is
+passed. Does your outcome agree with the Central Limit Theorem?
+
+
+```{r}
+for (i in 1:1000){
+n<-sample(x = 0:9, size = 1000, replace = T)
+std<-sd(n)
+x<-mean(n)
+Z<- (x-4.5)/std
+t<-0
+if (Z >= 3 | Z <= -3){
+  t<-t+1
+}
+}
+t
+```
+
+The average for the 1000 trials is always with three standard deviations of the true mean. 

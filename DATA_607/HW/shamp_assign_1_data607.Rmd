@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Tracking Congress in the Age of Trump
 ## Introduction
-538.com updates a daily tally of who in congress supports Pres. Trump by voting in alingment with his agend. 
+538 updates a daily tally of who in congress supports Pres. Trump by voting in alingment with his agend. 
 The also have built a prediction as to how frequently the Congressperson 'should' vote in alignment with Pres. Trump 
 based on how that congressperson's district of state voted in the last general election. They also provide a simple
 difference between how there actual record differs from the predicted record. 

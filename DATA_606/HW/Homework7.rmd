@@ -177,17 +177,17 @@ paste("98% CI:", lower, "-", upper)
 **For a power of 80%, we need to calculate the needed Z score for the 20% tails. 
 
 ```{r}
-qnorm(.1, lower.tail = F)
+qnorm(.8)
 ```
 
-**Now we can compute the sample size.**
+**Now we can compute the sample size with a critical value of 0.05 and a pooled SE**
 
 ```{r}
-n<- ((1.281552 * 2.2)/0.5)^2
+n<-((1.96+0.8416)^2 / 0.5^2 )*(2*2.2^2)
 n
 ```
 
-**We would need to sample 32 people.**
+**We would need to sample 303 people.**
 
 --------------------------------------------------------------------------------
 

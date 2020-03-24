@@ -1,0 +1,99 @@
+---
+title: "Data 605 HW 9 "
+author: "Jeff Shamp"
+date: "3/23/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 11 on page 363
+
+The price of one share of stock in the Pilsdorff Beer Company (see Exercise 8.2.12) is given by Yn on the nth day of the year. Finn observes that the differences Xn = Yn+1 ??? Yn appear to be independent random variables with a common distribution having mean ?? = 0 and variance ??2 = 1/4. If Y1 = 100, estimate the probability that Y365 is
+
+Here the mean is 0, so $S_{n} = n\mu_{X} = 0$ and the standard deviation is $std(S_{n}) = \frac{\sqrt{n}}{2}$ since $\sigma^{2} = \frac{1}{4}$. Can use a point estimate for $\sigma^{2}_{S}= 364/4=\sqrt{91}$
+
+In all of these $S_{n} = Y_{n-1} - 100$
+
+(a) $\geq 100$.
+
+$P(S_{365\ast}\geq 0)= 0.5$, which is the probability of the mean value. 
+
+(b) $\geq 110$.
+
+$P(S_{365\ast}\geq \frac{10}{\sqrt{91}})$
+
+```{r}
+z <- 10/sqrt(91)
+pnorm(z, lower.tail=FALSE)
+```
+
+
+(c) $\geq 120$
+
+Very similar
+
+$P(S_{365*}\geq \frac{20}{\sqrt{91}})$
+
+```{r}
+z <- 20/sqrt(91)
+pnorm(z, lower.tail=FALSE)
+```
+
+## Problem 2
+
+Calculate the expected value and variance of the binomial distribution using the moment generating function.
+
+The initial moment generating function is assembled below:
+
+$M_{x}(t) = \sum_{0}^{n}e^{xt}\frac{n!}{x!(n-x)!}p^{x}q^{n-x}$
+
+Which reduces nicely to $M_{x}(t) = (q+pe^{t})^{n}$
+
+The expected value is just the first derivative of the moment generator. 
+
+$E(X) = M'_{x}(0) = n(q+pe^{0})^{n-1}pe^{0}$. Expand and simplify we get, simply, $E(X) = np$ as expected :)
+
+The second moment is the second derivative, which I will leave the chain and product rules to Wolfram. 
+
+$E(X^{2})= n(n-1)p^{2}+np$ 
+
+The variance is the difference of the second moment and the square of the first moment. 
+
+$V(X) = n(n-1)p^{2}+np+ n^{2}p^{2} = npq$
+
+## Problem 3
+
+Calculate the expected value and variance of the exponential distribution using the moment
+generating function.
+
+$f(x) = \lambda e^{-\lambda x}$
+
+So the moment generating function is 
+
+$M_{x}(t) = \int_{0}^{\infty}e^{xt} \lambda e^{-\lambda x}dx$
+
+This requires some trickery and integration by parts, so can will consult the internet. 
+
+$M_{x}(t) = \frac{\lambda}{\lambda - t}$
+
+The first and second derivatves turn out to be pretty easy
+
+$M'_{x}(t) = \frac{\lambda}{(\lambda - t)^{2}}$ and $M''_{x}(t) = \frac{\lambda}{(\lambda - t)^{3}}$
+
+Thus expected value is 
+
+$E(X) = M'_{x}(0) = \frac{\lambda}{(\lambda - 0)^{2}} = \frac{1}{\lambda}$
+
+and $E(X^{2}) = M''_{x}(0) = \frac{2\lambda}{(\lambda - 0)^{3}} = \frac{2}{\lambda^{2}}$
+
+So the variance is the difference of the second and the square of the first derivative evaluated at zero. 
+
+$V(X) = \frac{2}{\lambda^{2}} - \frac{1}{\lambda^{2}}= \frac{1}{\lambda^{2}}$
+
+
+
+
+
