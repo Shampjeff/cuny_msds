@@ -1,0 +1,104 @@
+---
+title: "HW 9 - NYT API"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# New York Times API - Most Popular Articles
+
+The goal in this assignment is the use the NYT API to create a dataframe of out choosing. I will start with the most popular articles API. 
+
+```{r, include=FALSE}
+library(jsonlite)
+library(dplyr)
+library(plyr)
+library(tidyr)
+library(httr)
+library(stringr)
+library(ggplot2)
+```
+
+**Using jsonlite, dplyr, httr packages.**
+
+Let's first look at the most viewed articles in the last seven days using the following url and API key. This API allows the user to pull in data from 1, 7, or 30 days. I will pull all of these time intervals and bind them together. 
+
+```{r, warning=FALSE}
+url_vec<- c("https://api.nytimes.com/svc/mostpopular/v2/viewed/30.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
+            "https://api.nytimes.com/svc/mostpopular/v2/viewed/7.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
+            "https://api.nytimes.com/svc/mostpopular/v2/viewed/1.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa")
+interval <- c("month", "week", "day")
+most_pop_list = list()
+for (i in 1:length(url_vec)){
+
+last_week_most_pop<-GET(url_vec[i])
+top_articles<-content(last_week_most_pop)
+
+item<-list()
+for (j in 1:top_articles$num_results){
+  item[[j]]<-top_articles$results[[j]][c("title",
+                                    "abstract",
+                                    "byline",
+                                    "adx_keywords")]
+}
+df<- ldply(item, data.frame)
+
+df<-df %>%
+  mutate(byline = str_remove(df$byline, "By")) %>%
+  separate(byline,
+           sep = ", | and", 
+           into = c("author", "author_2", "author_3")) %>%
+  separate(adx_keywords,
+           sep=";",
+           into = "top_meta_tag") %>%
+  mutate(time_interval = interval[i], as.character) 
+
+most_pop_list[[i]]<-df
+}
+df_most_pop<- do.call("rbind", most_pop_list)
+```
+
+```{r}
+DT::datatable(df_most_pop, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 2))
+```
+
+
+
+What are the most popular article types...this is probably obvious given the state of the world, but let's see. 
+
+```{r, warning=FALSE}
+df_most_pop %>%
+  select(top_meta_tag) %>%
+  ggplot(aes(x=str_wrap(top_meta_tag, 10))) +
+  geom_histogram(stat = "count", fill="blue4", alpha=0.5) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x="Meta Tags", y="Count", title="Histogram of Top Meta Tags")
+```
+
+As expected. Who writes the most about Covid=19?
+
+```{r, warning=FALSE}
+df_most_pop %>%
+  select(top_meta_tag, author) %>%
+  filter(top_meta_tag =="Coronavirus (2019-nCoV)") %>%
+  ggplot(aes(x=author)) +
+  geom_histogram(stat = "count", fill="blue4", alpha=0.5) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x="Meta Tags", y="Count", title="Histogram of Covid-19 Articles by Author")
+```
+
+The generic staff writer get the most articles about Covid-19, then Roni Caryn Rabin. 
+
+
+
+
+
+
