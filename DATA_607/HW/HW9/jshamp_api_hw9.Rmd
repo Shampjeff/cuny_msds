@@ -27,9 +27,11 @@ library(ggplot2)
 Let's first look at the most viewed articles in the last seven days using the following url and API key. This API allows the user to pull in data from 1, 7, or 30 days. I will pull all of these time intervals and bind them together. 
 
 ```{r, warning=FALSE}
-url_vec<- c("https://api.nytimes.com/svc/mostpopular/v2/viewed/30.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
-            "https://api.nytimes.com/svc/mostpopular/v2/viewed/7.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
-            "https://api.nytimes.com/svc/mostpopular/v2/viewed/1.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa")
+url_vec<- c(
+"https://api.nytimes.com/svc/mostpopular/v2/viewed/30.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
+"https://api.nytimes.com/svc/mostpopular/v2/viewed/7.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa",
+"https://api.nytimes.com/svc/mostpopular/v2/viewed/1.json?api-key=eYFbYh1bFsuQKi7VcKWqh4CAHX6mbMXa"
+)
 interval <- c("month", "week", "day")
 most_pop_list = list()
 for (i in 1:length(url_vec)){
@@ -43,12 +45,12 @@ for (j in 1:top_articles$num_results){
                                     "abstract",
                                     "byline",
                                     "adx_keywords")]
-}
-df<- ldply(item, data.frame)
+}     # loop through the content list and extract information
+df<- ldply(item, data.frame) # nice way to convert list to df
 
 df<-df %>%
   mutate(byline = str_remove(df$byline, "By")) %>%
-  separate(byline,
+  separate(byline,  # separate by lines and take top meta tag
            sep = ", | and", 
            into = c("author", "author_2", "author_3")) %>%
   separate(adx_keywords,
@@ -58,6 +60,7 @@ df<-df %>%
 
 most_pop_list[[i]]<-df
 }
+# row bind the time interval dataframes to one
 df_most_pop<- do.call("rbind", most_pop_list)
 ```
 
@@ -72,6 +75,7 @@ DT::datatable(df_most_pop,
 
 
 
+
 What are the most popular article types...this is probably obvious given the state of the world, but let's see. 
 
 ```{r, warning=FALSE}
@@ -83,7 +87,7 @@ df_most_pop %>%
   labs(x="Meta Tags", y="Count", title="Histogram of Top Meta Tags")
 ```
 
-As expected. Who writes the most about Covid=19?
+As expected. Who writes the most about Covid-19?
 
 ```{r, warning=FALSE}
 df_most_pop %>%
@@ -95,10 +99,18 @@ df_most_pop %>%
   labs(x="Meta Tags", y="Count", title="Histogram of Covid-19 Articles by Author")
 ```
 
-The generic staff writer get the most articles about Covid-19, then Roni Caryn Rabin. 
+The generic staff writer get the most articles about Covid-19, then Roni Caryn Rabin. How about the speard of articles per week. 
 
+```{r, warning=FALSE}
+df_most_pop %>%
+  filter(time_interval == "day") %>%
+  select(author) %>%
+  ggplot(aes(x=author)) +
+  geom_histogram(stat = "count", fill="blue4", alpha=0.5) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x="Meta Tags", y="Count", title="Histogram of Covid-19 Articles by Author")
+```
 
-
-
+Very homogenous. 
 
 
