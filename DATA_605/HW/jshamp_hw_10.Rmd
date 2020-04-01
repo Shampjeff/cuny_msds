@@ -1,0 +1,62 @@
+---
+title: "HW 10 - Data 605"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  pdf_document
+---
+
+# Prisoner's Gambit
+
+Smith is in jail and has 1 dollar; he can get out on bail if he has 8 dollars. A guard agrees to make a series of bets with him. If Smith bets A dollars, he wins A dollars with probability .4 and loses A dollars with probability .6. Find the probability that he wins 8 dollars before losing all of his money if:
+
+## timid strategy
+He bets 1 dollar each time
+
+We have a simple equation to answer this question since itt's a static case of only betting one dollar without regard to how much he has. 
+
+$P=\frac{1 - (\frac{q}{p})^{s}}{1 - (\frac{q}{p})^{M}}$. The quantities are given in the problem such that this becomes. 
+
+$P=\frac{1 - (1.5)}{1 - (1.5)^{8}}$
+
+And the probability becomes, $P=0.00203$. So about 2% chance to make bail. 
+
+
+## bold strategy
+He bets, each time, as much as possible but not more than necessary to bring his fortune up to 8 dollars.
+
+This is a binomial problem that can also be modeled with Markov. We'll do the easy case first. In this case, he needs to win three straight times to reach the eight dollar bail. The sequence looks like, 1,2,4,8 where he starts at one and aftter three consecutive wins reaches eight dollars. 
+
+
+```{r}
+p_bi<-dbinom(3,3,0.4)
+paste("Probability of winning in the bold strategy", p_bi)
+```
+
+Looking at this situation as a Markov Chain, we have the following matrix containing all states 0,1,2,4,8
+
+$\begin{bmatrix}
+1 & 0 & 0 & 0 & 0 \\ 
+0.6 & 0 & 0.4 & 0 & 0 \\ 
+0.6 & 0 & 0 & 0.4 & 0 \\ 
+0.6 & 0 & 0 & 0 & 0.4 \\ 
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}$
+
+We have an initial state of $\pi_{0}=\begin{bmatrix}0 & 1 & 0 & 0 & 0\end{bmatrix}$, since he has 1 dollar and can lose it or gain the above states.
+
+Now we need to run the Markov transformation four times to compute the final state probability. 
+
+```{r}
+markov<- matrix(c(1,0,0,0,0,0.6,0,0.4,0,0,0.6,0,0,0.4,0,0.6,0,0,0,0.4,0,0,0,0,1), byrow=T,nrow=5)
+p_state<-matrix(c(0,1,0,0,0),byrow=T, nrow=1)
+p_state%*%markov%*%markov%*%markov%*%markov
+```
+
+Here we see that the probability is equal to the binomial case, as expected. 
+
+## Best Choice?
+Which strategy gives Smith the better chance of getting out of jail?
+
+The probability is higher with the bold strategy, three times as large, in fact. He must win three straight though. The timid strategy allows for loses, but is not as likely to win overall. **Fortune favors the bold.**
+

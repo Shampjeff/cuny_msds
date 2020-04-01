@@ -1,0 +1,32 @@
+---
+title: "week 10 discussion"
+author: "Jeff Shamp"
+date: "3/31/2020"
+output: pdf_document
+---
+
+# A better way to apply a matrix transformation. 
+
+I cannot find a good and simple way to apply a matrix transformation to the markov problem in the homework set. Below is the set up for this problem. 
+
+Looking at this situation as a Markov Chain, we have the following matrix containing all states 0,1,2,4,8
+
+$\begin{bmatrix}
+1 & 0 & 0 & 0 & 0 \\ 
+0.6 & 0 & 0.4 & 0 & 0 \\ 
+0.6 & 0 & 0 & 0.4 & 0 \\ 
+0.6 & 0 & 0 & 0 & 0.4 \\ 
+0 & 0 & 0 & 0 & 1
+\end{bmatrix}$
+
+We have an initial state of $\pi_{0}=\begin{bmatrix}0 & 1 & 0 & 0 & 0\end{bmatrix}$, since he has 1 dollar and can lose it or gain the above states.
+
+Now we need to run the Markov transformation four times to compute the final state probability. 
+
+```{r}
+markov<- matrix(c(1,0,0,0,0,0.6,0,0.4,0,0,0.6,0,0,0.4,0,0.6,0,0,0,0.4,0,0,0,0,1), byrow=T,nrow=5)
+p_state<-matrix(c(0,1,0,0,0),byrow=T, nrow=1)
+p_state%*%markov%*%markov%*%markov%*%markov
+```
+
+Here I simply repeated the same command four times, but this isn't a robust solution. Is there, to anyone's kowledge a simple way to apply this transformation repeatedly. I could make a loop, but is there a simple built-in function that can be used to do this?

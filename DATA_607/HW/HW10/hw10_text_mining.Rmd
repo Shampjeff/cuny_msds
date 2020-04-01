@@ -1,0 +1,208 @@
+---
+title: "607 - HW 10 - Text Mining"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# Text Mining
+
+We are to start this assignment by producing a working version of the example used in "Text Mining with R", chapter 2. 
+
+## Base Code
+
+First let's simply reproduce the code so that things are in the correct place. 
+
+```{r, include=FALSE}
+library(tidytext)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(janeaustenr)
+library(gutenbergr)
+library(stringr)
+library(lexicon)
+```
+
+```{r}
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+
+DT::datatable(tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE), 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Here we brought in the Jane Austen corpus and the NRC lexicon from chapter 2 in "Text Mining with R".
+
+The NRC license can be found [here](https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm)
+
+
+## New Corpus - Mody Dick
+
+Let's move on to another famous NLP corpus, Hermin Melville's, "Moby Dick". For the uninitiated, a summary of the book is [here](https://americanliterature.com/author/herman-melville/book/moby-dick-or-the-whale/summary)
+
+We will be using the `gutnebergr` package to download the 'Moby Dick" corpus. There are several options, id number 2701 has the full text and is public domain. 
+
+```{r}
+DT::datatable(gutenberg_metadata %>%
+  filter(author == "Melville, Herman") %>%
+  select(gutenberg_id, title, rights, has_text),
+              extensions = c('FixedColumns',"FixedHeader"),
+              options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Download the file. 
+
+```{r}
+moby_dick<-gutenberg_download(2701)
+```
+
+Basic Preprocessing to assign and index for the lines and remove the whitespace. 
+
+```{r}
+moby_dick<- moby_dick %>%
+                  filter(!text == "")
+colnames(moby_dick) <- c("id", "text")
+moby_dick[, "id"] <- rownames(moby_dick)
+```
+
+### Call Me Ishmael
+
+The opening paragraph of Moby Dick is famous in its own right, if you have not read it, or not read it in some time, you are encouraged to do so below.
+
+```{r setup}
+str_break = function(x, width = 70L) {
+  n = nchar(x)
+  if (n <= width) return(x)
+  n1 = seq(1L, n, by = width)
+  n2 = seq(width, n, by = width)
+  if (n %% width != 0) n2 = c(n2, n)
+  substring(x, n1, n2)
+}
+```
+
+
+
+```{r test}
+x<-apply(moby_dick[6:24,"text"], 2, paste, collapse=" ")
+cat(str_break(x), sep = '\n')
+```
+
+## Sentiment Analysis
+
+First we will process this down by word and include the lines and chapters in case we want them later. 
+
+```{r}
+moby_dick_tokens<- moby_dick %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text,
+                                     regex("^CHAPTER [\\d]", 
+                                     ignore_case = TRUE)))) %>%
+  mutate(chapter = chapter+1) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+```
+
+### New Lexicon
+
+From the "lexicon" package I am using the Augmented Sentiword Polarity Table. For reference see page 29 [in the documentation](https://cran.r-project.org/web/packages/lexicon/lexicon.pdf)
+
+This package is not set up for tidyverse the way `bing`, `afinn`, and `nrc` are so we need to make some minor changes to make these work in a similar way. `hash_sentiment_sentiword` is the lexicon linked to above that I will be using.
+
+```{r}
+sentiword<-hash_sentiment_sentiword
+names(sentiword)<-c("word", "value")
+```
+
+I'll use a similar tactic as in the "Text Mining with R" and parse the sentiment by 80 line chunks. I'll plot the sentiment by chapter and hue the sentiment by 80 line chunks (there are 135 chapters in the book)
+
+```{r}
+senti_word<- moby_dick_tokens %>% 
+  inner_join(sentiword) %>%
+  group_by(index = linenumber %/% 80, chapter)%>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "SentiWord")
+senti_word%>%
+  ggplot(aes(chapter, sentiment, fill=index)) +
+  geom_col() +
+  theme(legend.position = "top")
+```
+
+### SentiWord Lexicon Comparison
+
+We can now compare the AFINN lexicon with sentiwords to see if the score are similar in trend. The scale WILL be different as SentiWord and AFINN have different scoring values. We are looking at trend here for comparison NOT whole number value. 
+
+```{r}
+afinn_word<-moby_dick_tokens %>% 
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber %/% 80, chapter) %>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "afinn")
+twin_lex<-bind_rows(senti_word, afinn_word) 
+twin_lex%>%
+  ggplot(aes(chapter, sentiment, fill=index)) +
+  geom_col() +
+  facet_wrap(~method, scales = "free_y", ncol=1) +
+  theme(legend.position = "top")
+```
+
+These are reasonably similar, but there are notable expections. The section between chapters 55-80 seem to rather different. Let's look at those more closely. 
+
+```{r}
+bind_rows(senti_word, afinn_word) %>%
+  filter(chapter >= 55 & chapter <= 85) %>%
+  ggplot(aes(chapter, sentiment, fill=index)) +
+  geom_col() +
+  facet_wrap(~method, scales = "free_y", ncol=1) +
+  theme(legend.position = "top")
+
+```
+
+So there is some confusion here between the two lexicons. Chapter 70-80 generally refer to the time after a whale has been captured. Ishmael describes the gruesome and and often harrowing process of dismembering a whale and procuring it's oil from fat and tissue. Chapter 71 talks at length about the various religious sects of Christainity popular at the time. It seems AFINN categorizes these lines as pretty negative where as SentiWord is more neutral. We see a similar distinction in chapter 75 -80 where there is further discussion about both religion, the idea of karma, and the process of dismantling of a whale. SentiWord scores these ideas as generally negative where as AFINN sees them as positive. These two lexicons do agree quite well in the chapter 81, in which a new boat and crew are routinely mocked for there lack of knowledge and naivete. 
+
+These differences are somewhat expected considering the detail and nuance of Melville as well as his prose, sentence structure, and word choice. 
+
+## Second New Lexicon
+
+Let's bring in one more lexicon that is very different. The SlangSD lexicon for more informal text. See documentation for this lexicon [here](http://liangwu.me/slangsd/)
+
+
+```{r}
+slangword<-hash_sentiment_slangsd
+names(slangword)<-c("word", "value")
+```
+
+```{r}
+moby_dick_tokens %>% 
+  inner_join(slangword) %>%
+  group_by(index = linenumber %/% 80, chapter)%>%
+  summarise(sentiment = sum(value)) %>%
+  mutate(method = "Slang SD") %>%
+  ggplot(aes(chapter, sentiment, fill=index)) +
+  geom_col() +
+  facet_wrap(~method, scales = "free_y", ncol=1) +
+  theme(legend.position = "top")
+```
+
+Clearly the Slang SD lexicon is an example of clearly bad choice as it identifies everything as negative. 
+
+
