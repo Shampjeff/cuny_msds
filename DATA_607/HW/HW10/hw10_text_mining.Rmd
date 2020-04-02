@@ -31,8 +31,9 @@ library(lexicon)
 tidy_books <- austen_books() %>%
   group_by(book) %>%
   mutate(linenumber = row_number(),
-         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
-                                                 ignore_case = TRUE)))) %>%
+         chapter = cumsum(str_detect(text, 
+                                     regex("^chapter [\\divxlc]", 
+                                     ignore_case = TRUE)))) %>%
   ungroup() %>%
   unnest_tokens(word, text)
 
@@ -72,7 +73,7 @@ DT::datatable(gutenberg_metadata %>%
 
 Download the file. 
 
-```{r}
+```{r, warning=FALSE}
 moby_dick<-gutenberg_download(2701)
 ```
 
@@ -203,6 +204,77 @@ moby_dick_tokens %>%
   theme(legend.position = "top")
 ```
 
-Clearly the Slang SD lexicon is an example of clearly bad choice as it identifies everything as negative. 
+Clearly the Slang SD lexicon is an example of clearly bad choice as it identifies everything as negative. Melville and modern slang terms very poorly aligned. 
+
+
+## TFIDF For More Important Words
+
+This is the primary use-case for TFIDF - no one cares about how frequent the words, "the" and "and" are in a corpus. To understand more valuable words and their frequency, we need a systematic way to rank the words. This is what TFIDF does. Term frequenct times inverse docment frequency allows us to know a relative sense of how unique words are distributed over the document. 
+
+First we will rank the words without TFIDF to demonstrate the issue. 
+
+```{r, warning=FALSE}
+word_chapter_count<-moby_dick_tokens %>%
+  count(chapter, word, sort=TRUE)
+
+chapter_total<-moby_dick_tokens %>%
+  count(chapter, word, sort=TRUE) %>%
+  group_by(chapter) %>%
+  summarise(total = sum(n))
+
+book_totals<-left_join(word_chapter_count,
+                       chapter_total,
+                       by="chapter") %>%
+              rename(chapter_count = n) %>%
+              rename(book_count = total)
+
+DT::datatable(book_totals,
+              extensions = c('FixedColumns',"FixedHeader"),
+              options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Not informative.
+
+
+```{r, warning=FALSE}
+book_totals<-book_totals %>%
+                bind_tf_idf(word, chapter, chapter_count) %>%
+                arrange((desc(tf_idf)))
+DT::datatable(book_totals %>%
+                select(chapter, word, book_count, tf_idf),
+              extensions = c('FixedColumns',"FixedHeader"),
+              options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 10))
+```
+
+Since there are 135 chapter we will need to filter the results for higher values of tf_idf and word counts per chapter because this isn't a perfect science of ranking word value. We see above that "um", "tum", "want" still rank pretty high so we can filter out these words with some creative selection. 
+
+```{r fig.width=7, fig.height=9}
+book_totals %>%
+  filter(tf_idf > 0.01 & chapter_count>10) %>%    # Search criteria
+  mutate(word = factor(word,                      # Group words together
+                       levels = rev(unique(word)))) %>% 
+  group_by(chapter) %>% 
+  top_n(20) %>% 
+  ungroup() %>%
+  arrange(desc(tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = chapter)) +    
+  geom_col(position = "dodge") +
+  labs(x = NULL, y = "tf-idf") +
+  theme(legend.position = "top") +
+  coord_flip()
+```
+
+
+
+Ok so we see clearly that Johan, the bibical tale ranking very high in several chaptera in Moby Dick. As does "whiteness" which is used to describe the whale. We also see many key characters; Peleg, Bildad, Queequeg, Pip, and Gabriel. Ahab is also on the list but near the bottom likely because his name is used so frequently. 
+
+
+
+
 
 
