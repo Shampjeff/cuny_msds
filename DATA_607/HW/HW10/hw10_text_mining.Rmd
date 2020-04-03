@@ -27,7 +27,7 @@ library(stringr)
 library(lexicon)
 ```
 
-```{r}
+```{r, message=FALSE}
 tidy_books <- austen_books() %>%
   group_by(book) %>%
   mutate(linenumber = row_number(),
@@ -73,7 +73,7 @@ DT::datatable(gutenberg_metadata %>%
 
 Download the file. 
 
-```{r, warning=FALSE}
+```{r, message=FALSE}
 moby_dick<-gutenberg_download(2701)
 ```
 
@@ -90,22 +90,10 @@ moby_dick[, "id"] <- rownames(moby_dick)
 
 The opening paragraph of Moby Dick is famous in its own right, if you have not read it, or not read it in some time, you are encouraged to do so below.
 
-```{r setup}
-str_break = function(x, width = 70L) {
-  n = nchar(x)
-  if (n <= width) return(x)
-  n1 = seq(1L, n, by = width)
-  n2 = seq(width, n, by = width)
-  if (n %% width != 0) n2 = c(n2, n)
-  substring(x, n1, n2)
-}
-```
-
-
 
 ```{r test}
-x<-apply(moby_dick[6:24,"text"], 2, paste, collapse=" ")
-cat(str_break(x), sep = '\n')
+for (i in 6:24)
+  {print(paste(moby_dick[i,'text']),row.names=FALSE, quote = FALSE)}
 ```
 
 ## Sentiment Analysis
@@ -136,7 +124,7 @@ names(sentiword)<-c("word", "value")
 
 I'll use a similar tactic as in the "Text Mining with R" and parse the sentiment by 80 line chunks. I'll plot the sentiment by chapter and hue the sentiment by 80 line chunks (there are 135 chapters in the book)
 
-```{r}
+```{r, message=FALSE}
 senti_word<- moby_dick_tokens %>% 
   inner_join(sentiword) %>%
   group_by(index = linenumber %/% 80, chapter)%>%
@@ -152,7 +140,7 @@ senti_word%>%
 
 We can now compare the AFINN lexicon with sentiwords to see if the score are similar in trend. The scale WILL be different as SentiWord and AFINN have different scoring values. We are looking at trend here for comparison NOT whole number value. 
 
-```{r}
+```{r, message=FALSE}
 afinn_word<-moby_dick_tokens %>% 
   inner_join(get_sentiments("afinn")) %>%
   group_by(index = linenumber %/% 80, chapter) %>%
@@ -192,7 +180,7 @@ slangword<-hash_sentiment_slangsd
 names(slangword)<-c("word", "value")
 ```
 
-```{r}
+```{r, message=FALSE}
 moby_dick_tokens %>% 
   inner_join(slangword) %>%
   group_by(index = linenumber %/% 80, chapter)%>%
@@ -253,7 +241,7 @@ DT::datatable(book_totals %>%
 
 Since there are 135 chapter we will need to filter the results for higher values of tf_idf and word counts per chapter because this isn't a perfect science of ranking word value. We see above that "um", "tum", "want" still rank pretty high so we can filter out these words with some creative selection. 
 
-```{r fig.width=7, fig.height=9}
+```{r fig.width=7, fig.height=9, message=FALSE}
 book_totals %>%
   filter(tf_idf > 0.01 & chapter_count>10) %>%    # Search criteria
   mutate(word = factor(word,                      # Group words together
