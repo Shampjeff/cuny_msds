@@ -1,0 +1,70 @@
+---
+title: "Recommender System Report - Spotify"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# Spotify Recommendation System  Analysis
+
+I found two interesting articles about the Spotify recommendation system. [The first](https://qz.com/571007/the-magic-that-makes-spotifys-discover-weekly-playlists-so-damn-good/) details how the system works and gives some personal examples for how the system plays out for and individual. 
+
+[The second](https://medium.com/@ericboam/i-decoded-the-spotify-recommendation-algorithm-heres-what-i-found-4b0f3654035b) article describes in detail one person's deep journey to find, listen, and evaluate recommendations from Spotify (and others) and his response to them. 
+
+## Scenario Design for Spotify
+
+1. Target Users: Paying customers and potential paying customers (either free users or newcomers)
+2. Key Goals: Make new and free customers for-pay customers. Make more active users. 
+3. How to Help Them: Make the best service possible to attract for=pay customers.
+
+## Scenario Design for Customers
+
+1. Target User: All users
+2. Key Goals: Make a system that users love and want to frequently use. Respond quickly to changing desires and interests. 
+3. How to Help: Easy playlist creatation, discover weekly, helpful search, good recommendations for a given a playlist. 
+
+## Secret Sauce
+
+One thing Spotify is famous for is the Discover Weekly playlist. They are creepy good for active users and this feature has a cult following. 
+From the first article:
+
+>The main ingredient in Discover Weekly, it turns out, is other people. Spotify begins by looking at the 2 billion or so playlists created by its users—each one a reflection of some music fan’s tastes and sensibilities. Those human selections and groupings of songs form the core of Discover Weekly’s recommendations.
+
+>“Playlists are the common currency on Spotify. More users knew how to use them and create them than any other feature,” said Ogle, who previously founded This Is My Jam, a startup that asked users to pick one favorite song at a time. It shut down earlier this year.
+
+>Spotify considers everything from professionally curated playlists like RapCaviar to your cousin Joe’s summer barbecue jams. It gives extra weight to the company’s own playlists and those with more followers. Then it attempts to fill in the blanks between your listening habits and those with similar tastes. In the simplest terms, if Spotify notices that two of your favorite songs tend to appear on playlists along with a third song you haven’t heard before, it will suggest the new song to you.
+
+Playlists that are scored as similar to your taste profile - developed by listening to and liking songs - are weighted together to deliver recommendations. The 2 billion playlists on Spotify create an endless list of similarity scores for the machines to choose from. 
+
+Again, based on likes and saves, Spotify creates and refines a taste proflie for each user and can use the profile to find new, unlistened to music to deliver to Discover Weekly or at the end of a playlist. 
+
+## Recommendation
+
+One thing that Spotify does not seem to weight into recommendation is time of day, that was clear from the first article. ![spotify](/Users/jeffshamp/Documents/GitHub/cuny_msds/DATA_607/recommend.png) People do change their listening habits by time and day and that could be a nice new feature that augments the type of song recommended. 
+
+It would also be nice to have some kind of API for people to edit their profile. This is not only a data ownership issue, but also convinence for people who want to make a clean break from certain types of music for a while. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
