@@ -1,0 +1,245 @@
+---
+title: "Spam vs Ham - Project 4 - Data 607"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(e1071)
+library(tm)
+library(tidytext)
+library(caret)
+library(xgboost)
+library(RMySQL)
+```
+
+# Cleaning and Data Preparation
+
+First, we will import, clean, and process the data for classification.
+
+## Datasets
+
+I found a large library of datasets [here](https://www.cs.bgu.ac.il/~elhadad/nlp16/spam_classifier.html). Below is an excerpt from the site regarding a library of resources. 
+
+The email spam messages are collected from:
+
+The ENRON [email archive](http://www.aueb.gr/users/ion/data/enron-spam/)
+The Apache [Spam Assassin dataset](https://spamassassin.apache.org/publiccorpus/)
+To make the work simpler, the two datasets are put into a single zip file [here](http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip (107MB, contains about 60K files).
+
+The SMS dataset is from:
+
+[SMS](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection)
+
+For Reference on class labels
+
+SOURCES = [
+    ('data/spam',        SPAM),
+    ('data/spam_2,       SPAM),
+    ('data/easy_ham_2,   HAM),
+    ('data/easy_ham',    HAM),
+    ('data/hard_ham',    HAM),
+    ('data/beck-s',      HAM),
+    ('data/farmer-d',    HAM),
+    ('data/kaminski-v',  HAM),
+    ('data/kitchen-l',   HAM),
+    ('data/lokay-m',     HAM),
+    ('data/williams-w3', HAM),
+    ('data/BG',          SPAM),
+    ('data/GP',          SPAM),
+    ('data/SH',          SPAM)
+]
+
+
+## Read Files
+
+I divided the files into two sets for spam and ham. There are ~60K files spread out over many folders, I will load them locally and read in the files. The zip file containing the data is on [github]().
+
+**Reproduction Note: Follow the link above to my github repo and download the zip file and load the files locally. Set the ham and spam paths to your local directory.**
+
+```{r}
+spam_path = "/Users/jeffshamp/Downloads/data/spam"
+ham_path = "/Users/jeffshamp/Downloads/data/ham"
+```
+
+This function crawls through the files and extracts the messages in there raw form. 
+
+```{r read_file_func}
+make.data.frame<- function(path, class){
+  # Dig through the directories for messages
+  files <- list.files(path=path, 
+                      full.names=TRUE, 
+                      recursive=TRUE)
+  # Read a file once directories are gone
+  message<-lapply(files, function(x) {
+    text_body<-read_file(x)
+    })
+  # Add to dataframe and assign "id" column
+  message<-unlist(message)
+  data<-as.data.frame(message)
+  data$class<-class
+  return (data)
+} 
+```
+
+Make SPAM and HAM dataframes and bind them.
+
+```{r make_dataframes}
+data<-make.data.frame(spam_path, class="SPAM")
+data<-rbind(data, make.data.frame(ham_path, class="HAM"))
+```
+
+Somme classifiers (like XGBoost) need the target class to numerical, others do not (like Navie Bayes). I'll make both so that we can try out different modeling methods. 
+
+```{r}
+data_spam<-data %>%
+  filter(class == "SPAM") %>%
+  mutate(target = 1)
+data_ham<- data %>%
+  filter(class == "HAM") %>%
+  mutate(target = 0)
+data<-rbind(data_spam, data_ham)
+data$id <- 1:nrow(data)
+
+DT::datatable(data %>%
+              count(class, target),
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+```
+
+Now we need to clean the text files. Below we remove the html formatting, all punctuation, new lines, and digits from the text. We will also remove all stop words in the tidy lexicon. Maybe we can remove more later is the model isn't up to par. 
+
+```{r clean_text}
+data<-data %>%
+  mutate(message= str_remove_all(message, pattern = "<.*?>")) %>%
+  mutate(message= str_remove_all(message, pattern = "[:digit:]")) %>%
+  mutate(message= str_remove_all(message, pattern = "[:punct:]")) %>%
+  mutate(message= str_remove_all(message, pattern = "[\n]")) %>%
+  mutate(message= str_to_lower(message)) %>%
+  unnest_tokens(output=text,input=message,
+                token="paragraphs",
+                format="text") %>%
+  anti_join(stop_words, by=c("text"="word"))
+```
+
+These are currently ordered, as in all the Ham is first followed by all the Spam. We need to shuffle this order for later use in the train, test splits. 
+
+```{r, warning=FALSE}
+set.seed(9450)
+# randomize index
+row_shuffle <- sample(nrow(data))
+# reorder index
+data<-data[row_shuffle,]
+
+DT::datatable(data[1:5,c("class","id")],
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLength = 5))
+```
+
+## Document Term Matrix
+
+We need to vectorize the words in the corpus of messages and `tm` package seems to be a good job of handling that. We are also stemming the words while making the matrix since it seemed easier to do here than using tidyverse. The `tm` package offer a lot of really good functionality for this kind of work. 
+
+```{r}
+text_corpus <- VCorpus(VectorSource(data$text))
+```
+
+Now that this is a corpus we can produce a Document Term Matrix, which is a bag-of-words vectorizer for each message in the dataset. Without removing any sparse terms (below) this will produce a huge matrix that that tens of thousands of columns. Each column represents the count frequency of each word in the corpus. 
+
+```{r}
+# For tokens by message
+text_dtm <- DocumentTermMatrix(text_corpus, control =
+                                 list(stemming = TRUE))
+```
+
+We will reduce the number of columns to only the words that show up frequently (and are not stopwords). Reducing the dataset is very helpful in improving the predictive power of the model. Too many words "confuses" the algorithm and generally returns an overly simple model. For example, when I ran this without any term frequency filtering, every model just labeled all messages as SPAM. 
+
+We will also add a TFIDF score to each word to weight it's relative frequency within each message. This is a great way to feature engineer without adding columns. Now the matrix shows word frequency by corpus and message. 
+
+```{r, warning=FALSE}
+# Filter out sparse terms
+text_dtm <- removeSparseTerms(text_dtm,sparse = 0.97)
+
+# Create TFIDF score
+text_dtm <- as.data.frame(as.matrix(weightTfIdf(text_dtm)))
+                             
+dim(text_dtm)
+```
+
+Big reduction in columns, that's good as it filters down to only the (most likely) important words.
+
+
+## Train, Test, Split
+
+Normally, I would do 5-fold cross validation for evaluate an ML model, but the spam/ham problem is well solved and understood. My guess is that NavieBayes Classifier will probably do a sufficient job classifying these with a single split. This is a large dataset and will take some time to process, CV will only add to that computational load. Maybe we can test a new examples from an actual spam folder later as a hold-out observation. We will do a 75/25 train/test split from the shuffled classes. 
+
+
+```{r}
+test_split<-round(.25*dim(text_dtm)[1])
+
+test_text<-text_dtm[1:test_split,]
+train_text<-text_dtm[(test_split+1):dim(text_dtm)[1],]
+
+test_target<-data$class[1:test_split]
+train_target<-data$class[(test_split+1):dim(data)[1]]
+```
+
+
+# Modeling
+
+A few points on the modeling process.
+
+1. I tried several models and Naive Bayes worked the best. Interestingly, XGB was not a good as I hoped it would be. Normally, when modeling is it a good idea to try several options to determine best performance and speed. I have standard practice that I like to use but it is in Python. [See this repo for a Python Package](https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tools_dev.py) I built for model testing and evaluation. I comes with a [vignette](https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tool_example.ipynb) on how to use. Having something to evaluate and store model results is very helpful to show the progress of the model development. 
+2. The Navie Bayes Classifier worked the best, but still needed several testing iterations to get to 97.5% accuracy. Filtering the spare terms was essential and brought the classifier from 52% accuracy to 88%. Second, a little more sparse filtering and TFIDF scoring pulled the classifier up to 97% accuarcy. 
+
+## Navie Bayes Classifier
+
+The `e1071` package has a naive Bayes classifier. It needs the input training/test set to be a matrix and the target to be a vector. We can produce a confusion matrix to show the models performance. That confusion matrix comes the `caret` package. 
+
+```{r}
+# Initialize Navie Bayes
+text_clf <- naiveBayes(as.matrix(train_text), as.factor(train_target))
+```
+
+
+```{r}
+# Make predictions on test set
+preds <- predict(text_clf, as.matrix(test_text))
+```
+
+
+```{r}
+#Create confusion matrix
+confusionMatrix(data = preds, reference = as.factor(test_target),
+                positive = "SPAM", dnn = c("Prediction", "Actual"))
+```
+
+Awesome. 386 mis-classified documents out of ~15500 messages. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
