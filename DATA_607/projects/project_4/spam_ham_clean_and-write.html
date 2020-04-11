@@ -2625,13 +2625,13 @@ code span.er { color: #a61717; background-color: #e3d2d2; }
 <p>The email spam messages are collected from:</p>
 <p>The ENRON <a href="http://www.aueb.gr/users/ion/data/enron-spam/">email archive</a> The Apache <a href="https://spamassassin.apache.org/publiccorpus/">Spam Assassin dataset</a> To make the work simpler, the two datasets are put into a single zip file [here](<a href="http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip" class="uri">http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip</a> (107MB, contains about 60K files).</p>
 <p>The SMS dataset is from:</p>
-<p><a href="https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection">SMS</a></p>
+<p><a href="https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection">SMS data</a></p>
 <p>For Reference on class labels</p>
 <p>SOURCES = [ (‘data/spam’, SPAM), (‘data/spam_2, SPAM), (’data/easy_ham_2, HAM), (’data/easy_ham’, HAM), (‘data/hard_ham’, HAM), (‘data/beck-s’, HAM), (‘data/farmer-d’, HAM), (‘data/kaminski-v’, HAM), (‘data/kitchen-l’, HAM), (‘data/lokay-m’, HAM), (‘data/williams-w3’, HAM), (‘data/BG’, SPAM), (‘data/GP’, SPAM), (‘data/SH’, SPAM)]</p>
 </div>
 <div id="read-files" class="section level2">
 <h2>Read Files</h2>
-<p>I divided the files into two sets for spam and ham. There are ~60K files spread out over many folders, I will load them locally and read in the files. The zip file containing the data is on <a href>github</a>.</p>
+<p>I divided the files into two sets for spam and ham. There are ~67K files spread out over many folders, I will load them locally and read in the files. The zip files containing the data is on <a href="https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data">github</a>.</p>
 <p><strong>Reproduction Note: Follow the link above to my github repo and download the zip file and load the files locally. Set the ham and spam paths to your local directory.</strong></p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1">spam_path =<span class="st"> &quot;/Users/jeffshamp/Downloads/data/spam&quot;</span></a>
 <a class="sourceLine" id="cb1-2" data-line-number="2">ham_path =<span class="st"> &quot;/Users/jeffshamp/Downloads/data/ham&quot;</span></a></code></pre></div>
@@ -2654,81 +2654,128 @@ code span.er { color: #a61717; background-color: #e3d2d2; }
 <p>Make SPAM and HAM dataframes and bind them.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">data&lt;-<span class="kw">make.data.frame</span>(spam_path, <span class="dt">class=</span><span class="st">&quot;SPAM&quot;</span>)</a>
 <a class="sourceLine" id="cb3-2" data-line-number="2">data&lt;-<span class="kw">rbind</span>(data, <span class="kw">make.data.frame</span>(ham_path, <span class="dt">class=</span><span class="st">&quot;HAM&quot;</span>))</a></code></pre></div>
-<p>Somme classifiers (like XGBoost) need the target class to numerical, others do not (like Navie Bayes). I’ll make both so that we can try out different modeling methods.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">data_spam&lt;-data <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="st">  </span><span class="kw">filter</span>(class <span class="op">==</span><span class="st"> &quot;SPAM&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">target =</span> <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb4-4" data-line-number="4">data_ham&lt;-<span class="st"> </span>data <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="st">  </span><span class="kw">filter</span>(class <span class="op">==</span><span class="st"> &quot;HAM&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">target =</span> <span class="dv">0</span>)</a>
-<a class="sourceLine" id="cb4-7" data-line-number="7">data&lt;-<span class="kw">rbind</span>(data_spam, data_ham)</a>
-<a class="sourceLine" id="cb4-8" data-line-number="8">data<span class="op">$</span>id &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(data)</a>
-<a class="sourceLine" id="cb4-9" data-line-number="9"></a>
-<a class="sourceLine" id="cb4-10" data-line-number="10">DT<span class="op">::</span><span class="kw">datatable</span>(data <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb4-11" data-line-number="11"><span class="st">              </span><span class="kw">count</span>(class, target),</a>
-<a class="sourceLine" id="cb4-12" data-line-number="12">         <span class="dt">extensions =</span> <span class="kw">c</span>(<span class="st">'FixedColumns'</span>,<span class="st">&quot;FixedHeader&quot;</span>),</a>
-<a class="sourceLine" id="cb4-13" data-line-number="13">          <span class="dt">options =</span> <span class="kw">list</span>(<span class="dt">scrollX =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb4-14" data-line-number="14">                         <span class="dt">paging=</span><span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb4-15" data-line-number="15">                         <span class="dt">fixedHeader=</span><span class="ot">TRUE</span>))</a></code></pre></div>
-<div id="htmlwidget-4e0f81791d835ad6a9e1" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-4e0f81791d835ad6a9e1">{"x":{"filter":"none","extensions":["FixedColumns","FixedHeader"],"data":[["1","2"],["HAM","SPAM"],[0,1],[24942,36769]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>class<\/th>\n      <th>target<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"paging":true,"fixedHeader":true,"columnDefs":[{"className":"dt-right","targets":[2,3]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<p>The SMS dataset can be bound as well</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">sms_data&lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">  <span class="kw">read_lines</span>(</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">  <span class="st">&quot;/Users/jeffshamp/Downloads/smsspamcollection/SMSSpamCollection&quot;</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">    ))</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="kw">names</span>(sms_data)&lt;-<span class="st">&quot;lines&quot;</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">sms_data&lt;-sms_data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7"><span class="st">  </span><span class="kw">separate</span>(<span class="dt">col =</span> lines, <span class="dt">into =</span> <span class="kw">c</span>(<span class="st">&quot;class&quot;</span>, <span class="st">&quot;message&quot;</span>), <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">class =</span> <span class="kw">str_to_upper</span>(class)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message =</span> <span class="kw">factor</span>(message))</a>
+<a class="sourceLine" id="cb4-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">data&lt;-<span class="kw">rbind</span>(data, sms_data)</a></code></pre></div>
+<div id="best-of-text-messages" class="section level3">
+<h3>Best of Text Messages</h3>
+<blockquote>
+<p>“O Romeo, Romeo, wherefore art thou Romeo? Deny thy father and refuse thy name. Or if thou wilt not, be but sworn my love And I’ll no longer be a Capulet. ‘Tis but thy name that is my enemy: Thou art thyself, though not a Montague. What’s Montague? It is nor hand nor foot Nor arm nor face nor any other part Belonging to a man. O be some other name. What’s in a name? That which we call a rose By any other name would smell as sweet; So Romeo would, were he not Romeo call’d, Retain that dear perfection which he owes Without that title. Romeo, doff thy name, And for that name, which is no part of thee, Take all myself.”</p>
+</blockquote>
+<p>The above was not a text message from SMS dataset. Our most verbose actor had the following, similar take on love…</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">best_of&lt;-sms_data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">length =</span> <span class="kw">str_length</span>(message)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3"><span class="st">  </span><span class="kw">arrange</span>(<span class="kw">desc</span>(length))</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4"><span class="kw">str_split</span>(best_of[<span class="dv">1</span>,<span class="st">'message'</span>], <span class="st">&quot;[.]&quot;</span>)[[<span class="dv">1</span>]]</a></code></pre></div>
+<pre><code>##  [1] &quot;For me the love should start with attraction&quot;                                                               
+##  [2] &quot;i should feel that I need her every time around me&quot;                                                         
+##  [3] &quot;she should be the first thing which comes in my thoughts&quot;                                                   
+##  [4] &quot;I would start the day and end it with her&quot;                                                                  
+##  [5] &quot;she should be there every time I dream&quot;                                                                     
+##  [6] &quot;love will be then when my every breath has her name&quot;                                                        
+##  [7] &quot;my life should happen around her&quot;                                                                           
+##  [8] &quot;my life will be named to her&quot;                                                                               
+##  [9] &quot;I would cry for her&quot;                                                                                        
+## [10] &quot;will give all my happiness and take all her sorrows&quot;                                                        
+## [11] &quot;I will be ready to fight with anyone for her&quot;                                                               
+## [12] &quot;I will be in love when I will be doing the craziest things for her&quot;                                         
+## [13] &quot;love will be when I don't have to proove anyone that my girl is the most beautiful lady on the whole planet&quot;
+## [14] &quot;I will always be singing praises for her&quot;                                                                   
+## [15] &quot;love will be when I start up making chicken curry and end up makiing sambar&quot;                                
+## [16] &quot;life will be the most beautiful then&quot;                                                                       
+## [17] &quot;will get every morning and thank god for the day because she is with me&quot;                                    
+## [18] &quot;I would like to say a lot&quot;                                                                                  
+## [19] &quot;&quot;                                                                                                           
+## [20] &quot;will tell later&quot;                                                                                            
+## [21] &quot;&quot;                                                                                                           
+## [22] &quot;&quot;</code></pre>
+<p>Some classifiers (like XGBoost) need the target class to numerical, others do not (like Navie Bayes). I’ll make both so that we can try out different modeling methods.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">data_spam&lt;-data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb7-2" data-line-number="2"><span class="st">  </span><span class="kw">filter</span>(class <span class="op">==</span><span class="st"> &quot;SPAM&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">target =</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">data_ham&lt;-<span class="st"> </span>data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb7-5" data-line-number="5"><span class="st">  </span><span class="kw">filter</span>(class <span class="op">==</span><span class="st"> &quot;HAM&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">target =</span> <span class="dv">0</span>)</a>
+<a class="sourceLine" id="cb7-7" data-line-number="7">data&lt;-<span class="kw">rbind</span>(data_spam, data_ham)</a>
+<a class="sourceLine" id="cb7-8" data-line-number="8">data<span class="op">$</span>id &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(data)</a>
+<a class="sourceLine" id="cb7-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb7-10" data-line-number="10">DT<span class="op">::</span><span class="kw">datatable</span>(data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb7-11" data-line-number="11"><span class="st">              </span><span class="kw">count</span>(class, target),</a>
+<a class="sourceLine" id="cb7-12" data-line-number="12">         <span class="dt">extensions =</span> <span class="kw">c</span>(<span class="st">'FixedColumns'</span>,<span class="st">&quot;FixedHeader&quot;</span>),</a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">          <span class="dt">options =</span> <span class="kw">list</span>(<span class="dt">scrollX =</span> <span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">                         <span class="dt">paging=</span><span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb7-15" data-line-number="15">                         <span class="dt">fixedHeader=</span><span class="ot">TRUE</span>))</a></code></pre></div>
+<div id="htmlwidget-2c62a4c071fd6e7b7339" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2c62a4c071fd6e7b7339">{"x":{"filter":"none","extensions":["FixedColumns","FixedHeader"],"data":[["1","2"],["HAM","SPAM"],[0,1],[29769,37516]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>class<\/th>\n      <th>target<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"paging":true,"fixedHeader":true,"columnDefs":[{"className":"dt-right","targets":[2,3]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 <p>Now we need to clean the text files. Below we remove the html formatting, all punctuation, new lines, and digits from the text. We will also remove all stop words in the tidy lexicon. Maybe we can remove more later is the model isn’t up to par.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">data&lt;-data <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;&lt;.*?&gt;&quot;</span>)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-3" data-line-number="3"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[:digit:]&quot;</span>)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-4" data-line-number="4"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[:punct:]&quot;</span>)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-5" data-line-number="5"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[</span><span class="ch">\n</span><span class="st">]&quot;</span>)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-6" data-line-number="6"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_to_lower</span>(message)) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-7" data-line-number="7"><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output=</span>text,<span class="dt">input=</span>message,</a>
-<a class="sourceLine" id="cb5-8" data-line-number="8">                <span class="dt">token=</span><span class="st">&quot;paragraphs&quot;</span>,</a>
-<a class="sourceLine" id="cb5-9" data-line-number="9">                <span class="dt">format=</span><span class="st">&quot;text&quot;</span>) <span class="op">%&gt;%</span></a>
-<a class="sourceLine" id="cb5-10" data-line-number="10"><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by=</span><span class="kw">c</span>(<span class="st">&quot;text&quot;</span>=<span class="st">&quot;word&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1">data&lt;-data <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-2" data-line-number="2"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;&lt;.*?&gt;&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-3" data-line-number="3"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[:digit:]&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-4" data-line-number="4"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[:punct:]&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-5" data-line-number="5"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_remove_all</span>(message, <span class="dt">pattern =</span> <span class="st">&quot;[</span><span class="ch">\n</span><span class="st">]&quot;</span>)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-6" data-line-number="6"><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">message=</span> <span class="kw">str_to_lower</span>(message)) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-7" data-line-number="7"><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output=</span>text,<span class="dt">input=</span>message,</a>
+<a class="sourceLine" id="cb8-8" data-line-number="8">                <span class="dt">token=</span><span class="st">&quot;paragraphs&quot;</span>,</a>
+<a class="sourceLine" id="cb8-9" data-line-number="9">                <span class="dt">format=</span><span class="st">&quot;text&quot;</span>) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb8-10" data-line-number="10"><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by=</span><span class="kw">c</span>(<span class="st">&quot;text&quot;</span>=<span class="st">&quot;word&quot;</span>))</a></code></pre></div>
 <p>These are currently ordered, as in all the Ham is first followed by all the Spam. We need to shuffle this order for later use in the train, test splits.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">set.seed</span>(<span class="dv">9450</span>)</a>
-<a class="sourceLine" id="cb6-2" data-line-number="2"><span class="co"># randomize index</span></a>
-<a class="sourceLine" id="cb6-3" data-line-number="3">row_shuffle &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="kw">nrow</span>(data))</a>
-<a class="sourceLine" id="cb6-4" data-line-number="4"><span class="co"># reorder index</span></a>
-<a class="sourceLine" id="cb6-5" data-line-number="5">data&lt;-data[row_shuffle,]</a>
-<a class="sourceLine" id="cb6-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb6-7" data-line-number="7">DT<span class="op">::</span><span class="kw">datatable</span>(data[<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>,<span class="kw">c</span>(<span class="st">&quot;class&quot;</span>,<span class="st">&quot;id&quot;</span>)],</a>
-<a class="sourceLine" id="cb6-8" data-line-number="8">         <span class="dt">extensions =</span> <span class="kw">c</span>(<span class="st">'FixedColumns'</span>,<span class="st">&quot;FixedHeader&quot;</span>),</a>
-<a class="sourceLine" id="cb6-9" data-line-number="9">          <span class="dt">options =</span> <span class="kw">list</span>(<span class="dt">scrollX =</span> <span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb6-10" data-line-number="10">                         <span class="dt">paging=</span><span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb6-11" data-line-number="11">                         <span class="dt">fixedHeader=</span><span class="ot">TRUE</span>,</a>
-<a class="sourceLine" id="cb6-12" data-line-number="12">                         <span class="dt">pageLength =</span> <span class="dv">5</span>))</a></code></pre></div>
-<div id="htmlwidget-f662fcbf9707ef36bfe9" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f662fcbf9707ef36bfe9">{"x":{"filter":"none","extensions":["FixedColumns","FixedHeader"],"data":[["9155","39203","20149","18625","39224"],["HAM","SPAM","HAM","HAM","SPAM"],[45924,14270,56918,55394,14291]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>class<\/th>\n      <th>id<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"paging":true,"fixedHeader":true,"pageLength":5,"columnDefs":[{"className":"dt-right","targets":2},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="kw">set.seed</span>(<span class="dv">9450</span>)</a>
+<a class="sourceLine" id="cb9-2" data-line-number="2"><span class="co"># randomize index</span></a>
+<a class="sourceLine" id="cb9-3" data-line-number="3">row_shuffle &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="kw">nrow</span>(data))</a>
+<a class="sourceLine" id="cb9-4" data-line-number="4"><span class="co"># reorder index</span></a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">data&lt;-data[row_shuffle,]</a>
+<a class="sourceLine" id="cb9-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">DT<span class="op">::</span><span class="kw">datatable</span>(data[<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>,<span class="kw">c</span>(<span class="st">&quot;class&quot;</span>,<span class="st">&quot;id&quot;</span>)],</a>
+<a class="sourceLine" id="cb9-8" data-line-number="8">         <span class="dt">extensions =</span> <span class="kw">c</span>(<span class="st">'FixedColumns'</span>,<span class="st">&quot;FixedHeader&quot;</span>),</a>
+<a class="sourceLine" id="cb9-9" data-line-number="9">          <span class="dt">options =</span> <span class="kw">list</span>(<span class="dt">scrollX =</span> <span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">                         <span class="dt">paging=</span><span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb9-11" data-line-number="11">                         <span class="dt">fixedHeader=</span><span class="ot">TRUE</span>,</a>
+<a class="sourceLine" id="cb9-12" data-line-number="12">                         <span class="dt">pageLength =</span> <span class="dv">5</span>))</a></code></pre></div>
+<div id="htmlwidget-d248a1ff9664c0042470" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d248a1ff9664c0042470">{"x":{"filter":"none","extensions":["FixedColumns","FixedHeader"],"data":[["9155","39203","18625","39224","41766"],["HAM","SPAM","HAM","SPAM","SPAM"],[46671,9456,56141,9477,12024]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>class<\/th>\n      <th>id<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"scrollX":true,"paging":true,"fixedHeader":true,"pageLength":5,"columnDefs":[{"className":"dt-right","targets":2},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
 </div>
 <div id="document-term-matrix" class="section level2">
 <h2>Document Term Matrix</h2>
 <p>We need to vectorize the words in the corpus of messages and <code>tm</code> package seems to be a good job of handling that. We are also stemming the words while making the matrix since it seemed easier to do here than using tidyverse. The <code>tm</code> package offer a lot of really good functionality for this kind of work.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">text_corpus &lt;-<span class="st"> </span><span class="kw">VCorpus</span>(<span class="kw">VectorSource</span>(data<span class="op">$</span>text))</a></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" data-line-number="1">text_corpus &lt;-<span class="st"> </span><span class="kw">VCorpus</span>(<span class="kw">VectorSource</span>(data<span class="op">$</span>text))</a></code></pre></div>
 <p>Now that this is a corpus we can produce a Document Term Matrix, which is a bag-of-words vectorizer for each message in the dataset. Without removing any sparse terms (below) this will produce a huge matrix that that tens of thousands of columns. Each column represents the count frequency of each word in the corpus.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="co"># For tokens by message</span></a>
-<a class="sourceLine" id="cb8-2" data-line-number="2">text_dtm &lt;-<span class="st"> </span><span class="kw">DocumentTermMatrix</span>(text_corpus, <span class="dt">control =</span></a>
-<a class="sourceLine" id="cb8-3" data-line-number="3">                                 <span class="kw">list</span>(<span class="dt">stemming =</span> <span class="ot">TRUE</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="co"># For tokens by message</span></a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">text_dtm &lt;-<span class="st"> </span><span class="kw">DocumentTermMatrix</span>(text_corpus, <span class="dt">control =</span></a>
+<a class="sourceLine" id="cb11-3" data-line-number="3">                                 <span class="kw">list</span>(<span class="dt">stemming =</span> <span class="ot">TRUE</span>))</a>
+<a class="sourceLine" id="cb11-4" data-line-number="4"><span class="kw">dim</span>(text_dtm)</a></code></pre></div>
+<pre><code>## [1]  67249 716207</code></pre>
 <p>We will reduce the number of columns to only the words that show up frequently (and are not stopwords). Reducing the dataset is very helpful in improving the predictive power of the model. Too many words “confuses” the algorithm and generally returns an overly simple model. For example, when I ran this without any term frequency filtering, every model just labeled all messages as SPAM.</p>
 <p>We will also add a TFIDF score to each word to weight it’s relative frequency within each message. This is a great way to feature engineer without adding columns. Now the matrix shows word frequency by corpus and message.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="co"># Filter out sparse terms</span></a>
-<a class="sourceLine" id="cb9-2" data-line-number="2">text_dtm &lt;-<span class="st"> </span><span class="kw">removeSparseTerms</span>(text_dtm,<span class="dt">sparse =</span> <span class="fl">0.97</span>)</a>
-<a class="sourceLine" id="cb9-3" data-line-number="3"></a>
-<a class="sourceLine" id="cb9-4" data-line-number="4"><span class="co"># Create TFIDF score</span></a>
-<a class="sourceLine" id="cb9-5" data-line-number="5">text_dtm &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">as.matrix</span>(<span class="kw">weightTfIdf</span>(text_dtm)))</a>
-<a class="sourceLine" id="cb9-6" data-line-number="6">                             </a>
-<a class="sourceLine" id="cb9-7" data-line-number="7"><span class="kw">dim</span>(text_dtm)</a></code></pre></div>
-<pre><code>## [1] 61697   781</code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1"><span class="co"># Filter out sparse terms</span></a>
+<a class="sourceLine" id="cb13-2" data-line-number="2">text_dtm &lt;-<span class="st"> </span><span class="kw">removeSparseTerms</span>(text_dtm,<span class="dt">sparse =</span> <span class="fl">0.91</span>)</a>
+<a class="sourceLine" id="cb13-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb13-4" data-line-number="4"><span class="co"># Create TFIDF score</span></a>
+<a class="sourceLine" id="cb13-5" data-line-number="5">text_dtm &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">as.matrix</span>(<span class="kw">weightTfIdf</span>(text_dtm)))</a>
+<a class="sourceLine" id="cb13-6" data-line-number="6">                             </a>
+<a class="sourceLine" id="cb13-7" data-line-number="7"><span class="kw">dim</span>(text_dtm)</a></code></pre></div>
+<pre><code>## [1] 67249   191</code></pre>
 <p>Big reduction in columns, that’s good as it filters down to only the (most likely) important words.</p>
 </div>
 <div id="train-test-split" class="section level2">
 <h2>Train, Test, Split</h2>
-<p>Normally, I would do 5-fold cross validation for evaluate an ML model, but the spam/ham problem is well solved and understood. My guess is that NavieBayes Classifier will probably do a sufficient job classifying these with a single split. This is a large dataset and will take some time to process, CV will only add to that computational load. Maybe we can test a new examples from an actual spam folder later as a hold-out observation. We will do a 75/25 train/test split from the shuffled classes.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">test_split&lt;-<span class="kw">round</span>(.<span class="dv">25</span><span class="op">*</span><span class="kw">dim</span>(text_dtm)[<span class="dv">1</span>])</a>
-<a class="sourceLine" id="cb11-2" data-line-number="2"></a>
-<a class="sourceLine" id="cb11-3" data-line-number="3">test_text&lt;-text_dtm[<span class="dv">1</span><span class="op">:</span>test_split,]</a>
-<a class="sourceLine" id="cb11-4" data-line-number="4">train_text&lt;-text_dtm[(test_split<span class="op">+</span><span class="dv">1</span>)<span class="op">:</span><span class="kw">dim</span>(text_dtm)[<span class="dv">1</span>],]</a>
-<a class="sourceLine" id="cb11-5" data-line-number="5"></a>
-<a class="sourceLine" id="cb11-6" data-line-number="6">test_target&lt;-data<span class="op">$</span>class[<span class="dv">1</span><span class="op">:</span>test_split]</a>
-<a class="sourceLine" id="cb11-7" data-line-number="7">train_target&lt;-data<span class="op">$</span>class[(test_split<span class="op">+</span><span class="dv">1</span>)<span class="op">:</span><span class="kw">dim</span>(data)[<span class="dv">1</span>]]</a></code></pre></div>
+<p>Normally, I would do 5-fold cross validation for evaluate an ML model, but the spam/ham problem is well solved and understood. My guess is that NavieBayes Classifier will probably do a sufficient job classifying these with a single split. This is a large dataset and will take some time to process, CV will only add to that computational load. We will do a 75/25 train/test split from the shuffled classes.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">test_split&lt;-<span class="kw">round</span>(.<span class="dv">25</span><span class="op">*</span><span class="kw">dim</span>(text_dtm)[<span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb15-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb15-3" data-line-number="3">test_text&lt;-text_dtm[<span class="dv">1</span><span class="op">:</span>test_split,]</a>
+<a class="sourceLine" id="cb15-4" data-line-number="4">train_text&lt;-text_dtm[(test_split<span class="op">+</span><span class="dv">1</span>)<span class="op">:</span><span class="kw">dim</span>(text_dtm)[<span class="dv">1</span>],]</a>
+<a class="sourceLine" id="cb15-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb15-6" data-line-number="6">test_target&lt;-data<span class="op">$</span>class[<span class="dv">1</span><span class="op">:</span>test_split]</a>
+<a class="sourceLine" id="cb15-7" data-line-number="7">train_target&lt;-data<span class="op">$</span>class[(test_split<span class="op">+</span><span class="dv">1</span>)<span class="op">:</span><span class="kw">dim</span>(data)[<span class="dv">1</span>]]</a></code></pre></div>
 </div>
 </div>
 <div id="modeling" class="section level1">
@@ -2736,46 +2783,46 @@ code span.er { color: #a61717; background-color: #e3d2d2; }
 <p>A few points on the modeling process.</p>
 <ol style="list-style-type: decimal">
 <li>I tried several models and Naive Bayes worked the best. Interestingly, XGB was not a good as I hoped it would be. Normally, when modeling is it a good idea to try several options to determine best performance and speed. I have standard practice that I like to use but it is in Python. <a href="https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tools_dev.py">See this repo for a Python Package</a> I built for model testing and evaluation. I comes with a <a href="https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tool_example.ipynb">vignette</a> on how to use. Having something to evaluate and store model results is very helpful to show the progress of the model development.</li>
-<li>The Navie Bayes Classifier worked the best, but still needed several testing iterations to get to 97.5% accuracy. Filtering the spare terms was essential and brought the classifier from 52% accuracy to 88%. Second, a little more sparse filtering and TFIDF scoring pulled the classifier up to 97% accuarcy.</li>
+<li>The Navie Bayes Classifier worked the best, but still needed several testing iterations to get to 91.6% accuracy. Filtering the spare terms was essential and brought the classifier from 52% accuracy to 78%. Second, a little more sparse filtering and TFIDF scoring pulled the classifier up to 91.6% accuarcy.</li>
 </ol>
 <div id="navie-bayes-classifier" class="section level2">
 <h2>Navie Bayes Classifier</h2>
 <p>The <code>e1071</code> package has a naive Bayes classifier. It needs the input training/test set to be a matrix and the target to be a vector. We can produce a confusion matrix to show the models performance. That confusion matrix comes the <code>caret</code> package.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="co"># Initialize Navie Bayes</span></a>
-<a class="sourceLine" id="cb12-2" data-line-number="2">text_clf &lt;-<span class="st"> </span><span class="kw">naiveBayes</span>(<span class="kw">as.matrix</span>(train_text), <span class="kw">as.factor</span>(train_target))</a></code></pre></div>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1"><span class="co"># Make predictions on test set</span></a>
-<a class="sourceLine" id="cb13-2" data-line-number="2">preds &lt;-<span class="st"> </span><span class="kw">predict</span>(text_clf, <span class="kw">as.matrix</span>(test_text))</a></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1"><span class="co">#Create confusion matrix</span></a>
-<a class="sourceLine" id="cb14-2" data-line-number="2"><span class="kw">confusionMatrix</span>(<span class="dt">data =</span> preds, <span class="dt">reference =</span> <span class="kw">as.factor</span>(test_target),</a>
-<a class="sourceLine" id="cb14-3" data-line-number="3">                <span class="dt">positive =</span> <span class="st">&quot;SPAM&quot;</span>, <span class="dt">dnn =</span> <span class="kw">c</span>(<span class="st">&quot;Prediction&quot;</span>, <span class="st">&quot;Actual&quot;</span>))</a></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1"><span class="co"># Initialize Navie Bayes</span></a>
+<a class="sourceLine" id="cb16-2" data-line-number="2">text_clf &lt;-<span class="st"> </span><span class="kw">naiveBayes</span>(<span class="kw">as.matrix</span>(train_text), <span class="kw">as.factor</span>(train_target))</a></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1"><span class="co"># Make predictions on test set</span></a>
+<a class="sourceLine" id="cb17-2" data-line-number="2">preds &lt;-<span class="st"> </span><span class="kw">predict</span>(text_clf, <span class="kw">as.matrix</span>(test_text))</a></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1"><span class="co">#Create confusion matrix</span></a>
+<a class="sourceLine" id="cb18-2" data-line-number="2"><span class="kw">confusionMatrix</span>(<span class="dt">data =</span> preds, <span class="dt">reference =</span> <span class="kw">as.factor</span>(test_target),</a>
+<a class="sourceLine" id="cb18-3" data-line-number="3">                <span class="dt">positive =</span> <span class="st">&quot;SPAM&quot;</span>, <span class="dt">dnn =</span> <span class="kw">c</span>(<span class="st">&quot;Prediction&quot;</span>, <span class="st">&quot;Actual&quot;</span>))</a></code></pre></div>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Actual
 ## Prediction  HAM SPAM
-##       HAM  6144  177
-##       SPAM  209 8894
-##                                           
-##                Accuracy : 0.975           
-##                  95% CI : (0.9724, 0.9774)
-##     No Information Rate : 0.5881          
-##     P-Value [Acc &gt; NIR] : &lt;2e-16          
-##                                           
-##                   Kappa : 0.9483          
-##                                           
-##  Mcnemar's Test P-Value : 0.1146          
-##                                           
-##             Sensitivity : 0.9805          
-##             Specificity : 0.9671          
-##          Pos Pred Value : 0.9770          
-##          Neg Pred Value : 0.9720          
-##              Prevalence : 0.5881          
-##          Detection Rate : 0.5766          
-##    Detection Prevalence : 0.5902          
-##       Balanced Accuracy : 0.9738          
-##                                           
-##        'Positive' Class : SPAM            
+##       HAM  6391  271
+##       SPAM 1152 8998
+##                                          
+##                Accuracy : 0.9154         
+##                  95% CI : (0.911, 0.9195)
+##     No Information Rate : 0.5513         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.827          
+##                                          
+##  Mcnemar's Test P-Value : &lt; 2.2e-16      
+##                                          
+##             Sensitivity : 0.9708         
+##             Specificity : 0.8473         
+##          Pos Pred Value : 0.8865         
+##          Neg Pred Value : 0.9593         
+##              Prevalence : 0.5513         
+##          Detection Rate : 0.5352         
+##    Detection Prevalence : 0.6037         
+##       Balanced Accuracy : 0.9090         
+##                                          
+##        'Positive' Class : SPAM           
 ## </code></pre>
-<p>Awesome. 386 mis-classified documents out of ~15500 messages.</p>
+<p>Awesome. There is some tricky spam in the sms dataset. Without the SMS dataset, this classifier had 97% accuaracy.</p>
 </div>
 </div>
     </section>

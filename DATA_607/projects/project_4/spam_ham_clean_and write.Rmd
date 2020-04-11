@@ -34,7 +34,7 @@ To make the work simpler, the two datasets are put into a single zip file [here]
 
 The SMS dataset is from:
 
-[SMS](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection)
+[SMS data](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection)
 
 For Reference on class labels
 
@@ -58,7 +58,7 @@ SOURCES = [
 
 ## Read Files
 
-I divided the files into two sets for spam and ham. There are ~60K files spread out over many folders, I will load them locally and read in the files. The zip file containing the data is on [github]().
+I divided the files into two sets for spam and ham. There are ~67K files spread out over many folders, I will load them locally and read in the files. The zip files containing the data is on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data).
 
 **Reproduction Note: Follow the link above to my github repo and download the zip file and load the files locally. Set the ham and spam paths to your local directory.**
 
@@ -94,7 +94,51 @@ data<-make.data.frame(spam_path, class="SPAM")
 data<-rbind(data, make.data.frame(ham_path, class="HAM"))
 ```
 
-Somme classifiers (like XGBoost) need the target class to numerical, others do not (like Navie Bayes). I'll make both so that we can try out different modeling methods. 
+The SMS dataset can be bound as well
+
+```{r}
+sms_data<- as.data.frame(
+  read_lines(
+  "/Users/jeffshamp/Downloads/smsspamcollection/SMSSpamCollection"
+    ))
+names(sms_data)<-"lines"
+sms_data<-sms_data %>%
+  separate(col = lines, into = c("class", "message"), sep = "\t") %>%
+  mutate(class = str_to_upper(class)) %>%
+  mutate(message = factor(message))
+
+data<-rbind(data, sms_data)
+```
+
+### Best of Text Messages
+
+> "O Romeo, Romeo, wherefore art thou Romeo?
+Deny thy father and refuse thy name.
+Or if thou wilt not, be but sworn my love
+And I’ll no longer be a Capulet.
+‘Tis but thy name that is my enemy:
+Thou art thyself, though not a Montague.
+What’s Montague? It is nor hand nor foot
+Nor arm nor face nor any other part
+Belonging to a man. O be some other name.
+What’s in a name? That which we call a rose
+By any other name would smell as sweet;
+So Romeo would, were he not Romeo call’d,
+Retain that dear perfection which he owes
+Without that title. Romeo, doff thy name,
+And for that name, which is no part of thee,
+Take all myself."
+
+The above was not a text message from SMS dataset. Our most verbose actor had the following, similar take on love...
+
+```{r}
+best_of<-sms_data %>%
+  mutate(length = str_length(message)) %>%
+  arrange(desc(length))
+str_split(best_of[1,'message'], "[.]")[[1]]
+```
+
+Some classifiers (like XGBoost) need the target class to numerical, others do not (like Navie Bayes). I'll make both so that we can try out different modeling methods. 
 
 ```{r}
 data_spam<-data %>%
@@ -160,6 +204,7 @@ Now that this is a corpus we can produce a Document Term Matrix, which is a bag-
 # For tokens by message
 text_dtm <- DocumentTermMatrix(text_corpus, control =
                                  list(stemming = TRUE))
+dim(text_dtm)
 ```
 
 We will reduce the number of columns to only the words that show up frequently (and are not stopwords). Reducing the dataset is very helpful in improving the predictive power of the model. Too many words "confuses" the algorithm and generally returns an overly simple model. For example, when I ran this without any term frequency filtering, every model just labeled all messages as SPAM. 
@@ -168,7 +213,7 @@ We will also add a TFIDF score to each word to weight it's relative frequency wi
 
 ```{r, warning=FALSE}
 # Filter out sparse terms
-text_dtm <- removeSparseTerms(text_dtm,sparse = 0.97)
+text_dtm <- removeSparseTerms(text_dtm,sparse = 0.91)
 
 # Create TFIDF score
 text_dtm <- as.data.frame(as.matrix(weightTfIdf(text_dtm)))
@@ -181,7 +226,7 @@ Big reduction in columns, that's good as it filters down to only the (most likel
 
 ## Train, Test, Split
 
-Normally, I would do 5-fold cross validation for evaluate an ML model, but the spam/ham problem is well solved and understood. My guess is that NavieBayes Classifier will probably do a sufficient job classifying these with a single split. This is a large dataset and will take some time to process, CV will only add to that computational load. Maybe we can test a new examples from an actual spam folder later as a hold-out observation. We will do a 75/25 train/test split from the shuffled classes. 
+Normally, I would do 5-fold cross validation for evaluate an ML model, but the spam/ham problem is well solved and understood. My guess is that NavieBayes Classifier will probably do a sufficient job classifying these with a single split. This is a large dataset and will take some time to process, CV will only add to that computational load. We will do a 75/25 train/test split from the shuffled classes. 
 
 
 ```{r}
@@ -200,7 +245,7 @@ train_target<-data$class[(test_split+1):dim(data)[1]]
 A few points on the modeling process.
 
 1. I tried several models and Naive Bayes worked the best. Interestingly, XGB was not a good as I hoped it would be. Normally, when modeling is it a good idea to try several options to determine best performance and speed. I have standard practice that I like to use but it is in Python. [See this repo for a Python Package](https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tools_dev.py) I built for model testing and evaluation. I comes with a [vignette](https://github.com/Shampjeff/Personal_Projects/blob/master/ml_test_tool_example.ipynb) on how to use. Having something to evaluate and store model results is very helpful to show the progress of the model development. 
-2. The Navie Bayes Classifier worked the best, but still needed several testing iterations to get to 97.5% accuracy. Filtering the spare terms was essential and brought the classifier from 52% accuracy to 88%. Second, a little more sparse filtering and TFIDF scoring pulled the classifier up to 97% accuarcy. 
+2. The Navie Bayes Classifier worked the best, but still needed several testing iterations to get to 91.6% accuracy. Filtering the spare terms was essential and brought the classifier from 52% accuracy to 78%. Second, a little more sparse filtering and TFIDF scoring pulled the classifier up to 91.6% accuarcy. 
 
 ## Navie Bayes Classifier
 
@@ -224,12 +269,7 @@ confusionMatrix(data = preds, reference = as.factor(test_target),
                 positive = "SPAM", dnn = c("Prediction", "Actual"))
 ```
 
-Awesome. 386 mis-classified documents out of ~15500 messages. 
-
-
-
-
-
+Awesome. There is some tricky spam in the sms dataset. Without the SMS dataset, this classifier had 97% accuaracy. 
 
 
 
