@@ -1,0 +1,105 @@
+---
+title: "Stopping Distance Regression Analysis"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+## Regression Analysis Introduction
+
+The data is loaded from the "cars" dataset in R and has values for the stopping distance as a function of speed. It turns out that this is an activity I did with high school physics students for years. As such, I would expect this data to be quadratic, os a garden variety linear regression should not be a great fit and the residuals will likely look like a parabola. Extending the regression to include a squareed term will likely be helpful. 
+
+The standard physics approach suggests the following relationship between stopping distance and speed of travel:
+
+$KE = F*d_{stopping}$, such that the Kinetic Energy of car transforms in work done by the tires to stop. This expands to, $\frac{1}{2} m v^{2} = F \times d$. Thus, we expect a squared relationship between speed (_v_) and d (stopping distance). 
+
+## Data
+
+Loading tidyverse and datasets libraries.
+
+```{r setup, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(datasets)
+theme_set(
+  theme_minimal() +
+    theme(legend.position = "top")
+  )
+```
+
+```{r}
+cars<-datasets::cars
+head(cars)
+```
+
+```{r}
+summary(cars)
+```
+
+```{r}
+cars %>%
+  ggplot(aes(x=dist, y=speed)) +
+  geom_point() +
+  labs(x="stopping distance",
+       y="speed",
+       title="Speed as a function of Stopping Distance")
+```
+
+## Linear Regression
+
+Apply the regresssion and display some result and metrics.
+
+```{r}
+linreg<- lm(data = cars, speed ~ dist)
+linreg
+```
+
+```{r}
+summary(linreg)
+```
+
+Not the greatest fit in the world, especially for physics. Adjusted R-squared = 0.6438 is pretty uderwhelming for a traditional science. Also the standard error is huge relative to the coefficients. Not a good sign for this model. 
+
+Visualize the plot with the regression line applied. 
+
+```{r}
+cars %>%
+  ggplot(aes(x=dist, y=speed))+
+  geom_point(color="black") +
+  geom_abline(slope = linreg$coefficients[2], 
+              intercept = linreg$coefficients[1],
+              color="red")
+```
+
+
+### Residual Analysis
+
+We would expect the residuals to be centered around zero for variables that are good linear fits. 
+
+```{r}
+linreg %>%
+  ggplot(aes(x=fitted(linreg), y=resid(linreg))) +
+  geom_point() + 
+  geom_smooth(method = "loess", color="red") +
+  labs(x="predicted",
+       y="residuals",
+       title="Residual plot for predicted values")
+```
+
+This is rather unconvincing in any direction, It would be nice to see this be more uniform, but it's not horrible. Let's also look at the QQ plot. 
+
+```{r}
+linreg %>%
+  ggplot(aes(sample = resid(linreg))) +
+  stat_qq() +
+  stat_qq_line(color="red")
+```
+
+Not exactly straight, but not horrible either. The upper is tail is a bit heavy and points are not super well aligned with the line. Maybe this is a decent fit. 
+
+
+
+
+
