@@ -26,33 +26,27 @@ First, we will import, clean, and process the data for classification.
 
 I found a large library of datasets [here](https://www.cs.bgu.ac.il/~elhadad/nlp16/spam_classifier.html). Below is an excerpt from the site regarding a library of resources. 
 
-The email spam messages are collected from:
-
-The ENRON [email archive](http://www.aueb.gr/users/ion/data/enron-spam/)
-The Apache [Spam Assassin dataset](https://spamassassin.apache.org/publiccorpus/)
-To make the work simpler, the two datasets are put into a single zip file [here](http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip (107MB, contains about 60K files).
-
-The SMS dataset is from:
-
-[SMS data](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection)
-
-For Reference on class labels
-
-SOURCES = [
-    ('data/spam',        SPAM),
-    ('data/spam_2,       SPAM),
-    ('data/easy_ham_2,   HAM),
-    ('data/easy_ham',    HAM),
-    ('data/hard_ham',    HAM),
-    ('data/beck-s',      HAM),
-    ('data/farmer-d',    HAM),
-    ('data/kaminski-v',  HAM),
-    ('data/kitchen-l',   HAM),
-    ('data/lokay-m',     HAM),
-    ('data/williams-w3', HAM),
-    ('data/BG',          SPAM),
-    ('data/GP',          SPAM),
-    ('data/SH',          SPAM)
+>The email spam messages are collected from: <br />
+>The ENRON [email archive](http://www.aueb.gr/users/ion/data/enron-spam/) <br />
+>The Apache [Spam Assassin dataset](https://spamassassin.apache.org/publiccorpus/)
+To make the work simpler, the two datasets are put into a single zip file [here](http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip) (107MB, contains about 60K files). <br />
+>The SMS dataset is from: [SMS data](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection) <br />
+>For Reference on class labels <br />
+>SOURCES = [ <br />
+    ('data/spam',        SPAM), <br />
+    ('data/spam_2,       SPAM), <br />
+    ('data/easy_ham_2,   HAM), <br />
+    ('data/easy_ham',    HAM), <br />
+    ('data/hard_ham',    HAM), <br />
+    ('data/beck-s',      HAM), <br />
+    ('data/farmer-d',    HAM), <br />
+    ('data/kaminski-v',  HAM), <br />
+    ('data/kitchen-l',   HAM), <br />
+    ('data/lokay-m',     HAM), <br />
+    ('data/williams-w3', HAM), <br />
+    ('data/BG',          SPAM), <br />
+    ('data/GP',          SPAM), <br />
+    ('data/SH',          SPAM) <br />
 ]
 
 
@@ -60,7 +54,21 @@ SOURCES = [
 
 I divided the files into two sets for spam and ham. There are ~67K files spread out over many folders, I will load them locally and read in the files. The zip files containing the data is on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data).
 
-**Reproduction Note: Follow the link above to my github repo and download the zip file and load the files locally. Set the ham and spam paths to your local directory. These are large files with many subdirectories so it will be faster and easier to unzip locally and read the files.**
+**Reproduction Note: If you would like to reproduce these files, switch the below code chunk from 'markdown' to 'r' and execute. These are large files (too large to read directly from github) with many subdirectories so it will be faster and easier to unzip locally and read the files.**
+
+```markdown
+data_path <-paste0(getwd(),'/data')
+download.file(
+url='https://github.com/Shampjeff/cuny_msds/blob/master/DATA_607/data/data.zip',
+destfile=data_path, 
+method='curl'
+  )
+unzip("data.zip")
+ham_path<-paste0(data_path,'/ham')
+spam_path<-paste0(data_path, '/spam')
+```
+
+Using local files for data extraction since they are already downloaded. 
 
 ```{r}
 spam_path = "/Users/jeffshamp/Downloads/data/spam"
@@ -94,7 +102,19 @@ data<-make.data.frame(spam_path, class="SPAM")
 data<-rbind(data, make.data.frame(ham_path, class="HAM"))
 ```
 
-The SMS dataset can be bound as well. **Again, please see the zip files on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data) to load the data to your machine.** 
+The SMS dataset can be bound as well. **Again, please see the zip files on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data) or run the markdown chunk as R with `sms_path` in `read_lines` function to download and extract.** 
+
+```markdown
+data_path <-paste0(getwd(),'/smsspamcollection')
+download.file(
+url='https://github.com/Shampjeff/cuny_msds/blob/master/DATA_607/data/smsspamcollection.zip',
+destfile=data_path, 
+method='curl'
+  )
+unzip("smsspamcollection.zip")
+sms_path<-paste0(data_path,'/SMSSpamCollection')
+```
+Using the local file since it is already downloaded. 
 
 ```{r}
 sms_data<- as.data.frame(
@@ -137,6 +157,8 @@ best_of<-sms_data %>%
   arrange(desc(length))
 str_split(best_of[1,'message'], "[.]")[[1]]
 ```
+
+O Romeo, Romeo, wherefore art thou Romeo?
 
 ## Text Clean Up
 
