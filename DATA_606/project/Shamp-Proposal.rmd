@@ -1,7 +1,8 @@
 ---
-title: DATA 606 Data Project Proposal
-subtitle: "Congreesional Voting Records in the Age of Trump"
+title: "DATA 606 Data Project Proposal"
 author: "Jeff Shamp"
+subtitle: Congreesional Voting Records in the Age of Trump
+output: pdf_document
 ---
 
 ## Introduction
