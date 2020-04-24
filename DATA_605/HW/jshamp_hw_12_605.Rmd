@@ -1,0 +1,147 @@
+---
+title: "Multiple Regression Analysis"
+author: "Jeff Shamp"
+date: "4/21/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Problem 1
+
+```{r, warning=FALSE}
+who<-read_csv("who.csv")
+head(who)
+```
+
+Provide a scatterplot of LifeExp~TotExp, and run simple linear regression. Do not transform the variables. Provide and interpret the F statistics, R^2, standard error,and p-values only. Discuss whether the assumptions of simple linear regression met.
+
+
+```{r}
+lm_1<-lm(LifeExp ~ TotExp, data=who)
+summary(lm_1)
+
+lm_1 %>%
+  ggplot(aes(x=TotExp, y=LifeExp)) + 
+  geom_point() +
+  geom_abline(slope = lm_1$coefficients[2],
+              intercept = lm_1$coefficients[1], 
+              color="red")
+```
+
+**The R squared is terrible, but standard error, and p-values are super low and the F-stat is large enought to safely reject that the slope is zero. A simple scatter plot with an abline from the linear regression shows that a linear model is bad idea here. Adding a line to the data, in this case is not a good idea, even if the metrics for rejecting a zero slope is met. Not the right tool for the job.**
+
+
+
+## Problem 2
+
+Raise life expectancy to the 4.6 power (i.e., LifeExp^4.6). Raise total expenditures to the 0.06
+power (nearly a log transform, TotExp^.06). Plot LifeExp^4.6 as a function of TotExp^.06, and r
+re-run the simple regression model using the transformed variables. Provide and interpret the F
+statistics, R^2, standard error, and p-values. Which model is "better?"
+
+
+```{r}
+lm_2<-lm((LifeExp^4.6) ~ I(TotExp^.06), data=who)
+summary(lm_2)
+
+who %>%
+  ggplot(aes(x=(TotExp^.06), y=(LifeExp^4.6))) + 
+  geom_point() +
+  geom_abline(slope = lm_2$coefficients[2],
+              intercept = lm_2$coefficients[1], 
+              color="red")
+```
+
+```{r}
+lm_2 %>%
+  ggplot(aes(sample = resid(lm_2))) +
+  stat_qq() +
+  stat_qq_line(color="red")
+```
+
+
+**This actually looks linear, which is great. The F-statistic is huge and the it's p-value is very small, so we can confident that slope is non-zero. This is also true the slope and intercepts from the regression. The residuals are huge, but that might be sue to the transformation of the numbers. The R square and adjusted R squared are much better in that they are 0.72, which means the model can explain 72% of the variance in the data.The residual lower tail is very heavy, but otherwise ok.**
+
+
+## Problem 3
+
+Using the results from 3, forecast life expectancy when TotExp^.06 =1.5. Then forecast life
+expectancy when TotExp^.06=2.5. 
+
+```{r}
+life_exp<- (lm_2$coefficients[2]*(1.5)+lm_2$coefficients[1])^(1/4.6)
+paste("Life Expectancy when Total Expenses^0.6 = 1.5 =",life_exp, "years")
+```
+
+```{r}
+life_exp<- (lm_2$coefficients[2]*(2.5)+lm_2$coefficients[1])^(1/4.6)
+paste("Life Expectancy when Total Expenses^0.6 = 2.5 =",life_exp, "years")
+```
+
+**Spend tax money, live longer.**
+
+
+## Problem 4
+
+Build the following multiple regression model and interpret the F Statistics, R^2, standard error, and p-values. How good is the model?
+
+LifeExp = b0+b1 x PropMd + b2 x TotExp +b3 x PropMD x TotExp
+
+```{r}
+lm_3<-lm(LifeExp ~ PropMD + TotExp + (PropMD*TotExp), data=who)
+summary(lm_3)
+
+
+```
+
+```{r}
+lm_3 %>%
+  ggplot(aes(sample = resid(lm_3))) +
+  stat_qq() +
+  stat_qq_line(color="red")
+```
+
+**This is a better model than the first, but not great. The std error, p-value, F stat all indicate the the slope of the line is non-zero, but the R squared values cannot account more much variance in the data. Further the residuals don't seem to be nearly normal, but makes it hard to provide convinencing evidence that these variables should be used for a linear model.**
+
+## Problem 5
+
+Forecast LifeExp when PropMD=.03 and TotExp = 14. Does this forecast seem realistic? Why
+or why not?
+
+```{r}
+lm_3$coefficients
+```
+
+
+```{r}
+#LifeExp ~ PropMD + TotExp + (PropMD * TotExp)
+life_exp<- lm_3$coefficients[1]+
+          (.03)*lm_3$coefficients[2]+
+          (14)*lm_3$coefficients[3]+
+          (.03*14)*lm_3$coefficients[4]
+
+paste("Life Expectancy when Total Expenses = 14 and Proportion MD = .03 =",life_exp, "years")
+```
+
+**This is what happens when you over extrapolate the data.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

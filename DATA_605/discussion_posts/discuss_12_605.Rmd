@@ -1,0 +1,87 @@
+---
+title: "discussion week 13 - multi regression"
+author: "Jeff Shamp"
+date: "4/21/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Multiple Regression with Cars
+
+This is the well-used well loved 1974 Motor Trend Cars dataset.
+
+```{r}
+data(mtcars)
+head(mtcars)
+```
+
+We will plot a few variable and see what looks like a decent candidate for regression. 
+
+
+```{r}
+mtcars %>%
+  ggplot(aes(x=mpg, y=hp)) +
+  geom_point()
+mtcars %>%
+  ggplot(aes(x=mpg, y=wt)) +
+  geom_point()
+mtcars %>%
+  ggplot(aes(x=mpg, y=disp)) +
+  geom_point()
+```
+
+These are all fine options for quadratic regression on the surface. Since _there is no replacement for displacement_, I'll go with that variable. 
+
+We will go with Transmission type (`am`) for the binary variable. 
+
+
+```{r}
+lm_1<- lm(data=mtcars,mpg ~ I(disp^2)+am+(disp*am))
+summary(lm_1)
+```
+
+```{r}
+lm_1 %>%
+  ggplot(aes(sample = resid(lm_1))) +
+  stat_qq() +
+  stat_qq_line(color="red")
+
+lm_1 %>%
+  ggplot(aes(x=fitted(lm_1), y=resid(lm_1))) +
+  geom_point() + 
+  geom_smooth(method = "loess", color="red") +
+  labs(x="predicted",
+       y="residuals",
+       title="Residual plot for predicted values")
+```
+
+
+Here the adjusted R square is okay but the error values are suspecious. Many are very close in value to the coefficient, which is not a good sign of good model. The quadratic term confers a positive association with mpg, as does the "manual" transmission categorical. Displacement and the interaction term of `am` and `disp` both have a neagtive association. The p-value for the interaction term is the highest of the three predictors, so that would be elminated if we wanted to refine this model. 
+
+```{r}
+lm_2<- lm(data=mtcars,mpg ~ I(disp^2)+am)
+summary(lm_2)
+```
+
+```{r}
+lm_2 %>%
+  ggplot(aes(sample = resid(lm_2))) +
+  stat_qq() +
+  stat_qq_line(color="red")
+
+lm_2 %>%
+  ggplot(aes(x=fitted(lm_2), y=resid(lm_2))) +
+  geom_point() + 
+  geom_smooth(method = "loess", color="red") +
+  labs(x="predicted",
+       y="residuals",
+       title="Residual plot for predicted values")
+```
+
+
+This appears to be a better model even if the Adjusted R square is not as high. The residuals look better and the p-values for the coefficients being non-zero are much better. 
+
