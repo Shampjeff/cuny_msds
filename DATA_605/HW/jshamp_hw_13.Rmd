@@ -1,0 +1,149 @@
+---
+title: "HW 13 - 605 - Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  pdf_document 
+---
+
+
+```{r setup, echo=FALSE, cache=FALSE}
+library(ggplot2)
+```
+
+## Problem 1
+
+**Use integration by substitution to solve the integral below.**
+
+$\int 4e^{-7x}dx$
+
+Sub with $u=-7x$. Such that, $4 \int \frac{e^{u}}{-7}du$. Which nicely simplifies to the following:
+
+$\frac{-4}{7}e^{-7x}+C$
+
+## Problem 2
+
+**Biologists are treating a pond contaminated with bacteria. The level of contamination is changing at a rate of $\frac{dN}{dt} = -\frac{3150}{t^{4}}-220$ bacteria per cubic centimeter per day, where t is the number of days since treatment began. Find a function N( t ) to estimate the level of contamination if the level after 1 day was 6530 bacteria per cubic centimeter.**
+
+This is pretty straight forward integral problem. 
+
+$N(t) = \int -\frac{3150}{t^{4}}-220 dt$. We can leverage basic integral rules for powers and constants to arrive at
+
+$N(t) = \frac{3150}{3}t^{-3} - 220t + C$. Now solve using initial conditions. 
+
+$6350 = 1050 - 220 + C$ and $C=5700$
+
+Thus, $N(t) = \frac{3150}{3}t^{-3} - 220t + 5700$
+
+
+## Problem 3
+
+**Find the total area of the red rectangles in the figure below, where the equation of the line is f ( x ) = 2x - 9**
+
+Calculus is a bit of overkill here as Euler's approximation for a triangle is not needed. We can still find the area under the curve. 
+
+```{r}
+integrand<- function(x){
+  2*x-9
+}
+integrate(integrand, lower = 4.5, upper = 8.5)
+```
+
+:)
+
+## Problem 4
+
+**Find the area of the region bounded by the graphs of the given equations. $y=x^{2}-2x-2$ and $y=x+2$.This can be found by subtracting the areas of under the curve for each function for the interval in which they overlap. We can find that region by solving the equation of intersection.**
+
+$x^{2}-2x-2 = x+2$
+
+$x^{2}-3x-4=0$
+
+$x= -1, 4$
+
+This is bounded area, now we need to integrate the difference between the upper function (the line) and lower (quadratic). 
+
+$\int_{4}^{-1} -x^{2}+3x+4 dx$
+
+```{r}
+integrand<- function(x){
+  -(x)^2 + 3*x+4
+}
+integrate(integrand, lower=-1, upper=4)
+```
+
+
+
+## Problem 5
+
+**A beauty supply store expects to sell 110 flat irons during the next year. It costs \$3.75 to store one flat iron for one year. There is a fixed cost of \$8.25 for each order. Find the lot size and the number of orders per year that will minimize inventory costs.**
+
+This is a optimization problem. We need to piece together the cost of having these irons per year. Then we can find the minimum. Let x be the number of irons per order and the number of orders is $\frac{110}{x}$.
+
+They carrying cost (from the internet) roughly one quarter of the storage cost times the number of irons. Thus, $0.9375x$. The order cost is the fixed cost times the expected sales divided by the number of orders. Thus, $\frac{907.5}{x}$
+
+Adding these together and we get $C(x) = 0.9375x + \frac{907.5}{x}$
+
+We can find the minimum using the critical points of C(x). That is, $C'(x)=0$. So the crictical point is the following:
+
+$0 = 0.9375 - \frac{907.5}{x^{2}}$
+
+$x = 31.11$ and we ignore the negative result of the square root. 
+
+To check if this is legit, we need to make sure the inflection point is still positive. That is, $C"(31) > 0$
+
+$\frac{907.5}{x^{3}}=\frac{907.5}{31^{3}}=0.030463$ _phew_, this is a minimum. 
+
+**The costs are minimized at (rounding up) 4 orders and 31 lot size per year.**
+This assumes the carrying cost is one-quarter the total cost for the expected sales of 110 irons. 
+
+
+## Problem 6 
+
+Use integration by parts to solve the integral below
+
+$\int ln(9x) * x^{6}dx$
+
+Generally, integration by parts look like the following:
+
+$uv - \int vdu$
+
+The problem looks decent, so hopefully we will not have to change variables or pull and crazy tricks to solve this. 
+
+$u = ln(9x)$
+
+$du = \frac{1}{x}dx$
+
+$dv = x^{6}$
+
+$v = \frac{1}{7}x^{7}$
+
+Avengers, assemble. 
+
+$ln(9x)\times\frac{1}{7}x^{7} - \int \frac{1}{7}x^{7}\times\frac{1}{x}dx$
+
+$\frac{x^{7}ln(9x)}{7}- \frac{1}{7}\int x^{6}dx$
+
+Which becomes, $\frac{x^{7}ln(9x)}{7}- \frac{1}{7}(\frac{x^{7}}{7})+C$ and sort of simplifies to the following
+
+$\frac{x^{7}}{7}[ln(9x) - \frac{1}{7}]+C$
+
+
+## Problem 7
+
+Determine whether f(x) is a probability density function on the interval $[1, e^{6}]$ . If not, determine the value of the
+definite integral.
+
+$f(x)=\frac{1}{6x}$
+
+For this to be a PDF we need to see if $P(a\leq X \leq b)=\int_{a}^{b} f(x)dx$
+
+So we have, $\int_{1}^{e^{6}} \frac{1}{6x} dx = \frac{1}{6} \int_{1}^{e^{6}} \frac{1}{x}= \frac{1}{6}[ln(e^{6}) - ln(1)]=1$
+
+Since our result is within the closed interval $[1,e^{6}]$, f(x) is a PDF. 
+
+
+
+
+
+
+
