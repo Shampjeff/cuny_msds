@@ -1,0 +1,65 @@
+---
+title: "HW 14 - Taylor Series"
+author: "Jeff Shamp"
+date: "5/5/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Taylor expansion for three common functions
+
+For all of these we will expand them centered at zero (MacLaurin). Each is an infinite expansion from 0 -> $\infty$. 
+
+In general, the Taylor Series is as follows: $\sum_{n=0}^{\infty}\frac{f^{n}(a)}{n!}(x-a)^{n}$
+
+# 1 
+$f(x)=\frac{1}{1-x}$
+
+The derivatives follow a simple pattern, the first five are (keeping f(x) first: $[\frac{1}{1-x},\frac{1}{(1-x)^{2}}, \frac{-2}{(1-x)^{3}}, \frac{6}{(1-x)^{4}}, \frac{-24}{(1-x)^{5}},\frac{120}{(1-x)^{6}}]$
+
+Evaluation these at zero for the expansion yields: $[1,1,2,6,24,120]$, which is the factorial sequence for integers. This will be handy later. 
+
+Generally, the Taylor Series centered at zero looks like the following:
+
+$\sum_{n=0}^{\infty}\frac{f^{n}(0)}{n!}(x)^{n}= f(0) + \frac{f'(0)}{1!}x + \frac{f"(0)}{2!}x^{2} + \ldots \frac{f^{n}(0)}{n!}x^{n}$
+
+Since the MacLaurin series includes the factorial sequence in the numerator and the derviatives of f(x) evaluated at zero are also the factorial sequence, these terms cancel. This leaves us with, 
+
+$\frac{1}{1-x} = 1 + x + x^{2} + x^{3} + x^{4} + \ldots$
+
+So $\frac{1}{1-x}= \sum_{n=0}^{\infty} x^{n}$ for all $|x|<1$
+
+# 2 
+$f(x)=e^{x}$
+
+This one is great because the derivative of $e^{x}$ is simply $e^{x}$ and $e^{0}=1$ and our Taylor expansion at zero becomes
+
+$\sum_{n=0}^{\infty}\frac{f^{n}(0)}{n!}(x)^{n}= 1 + x + \frac{1}{1!}x + \frac{1}{2!}x^{2} + \ldots \frac{1}{n!}x^{n}$
+
+Thus $e^{x}= \sum_{n=0}^{\infty}\frac{x^{n}}{n!}$
+
+
+# 3
+$ln(1+x)$
+
+First we take the derivative of the function several times and see that is it similar to #1 (again keep f(x) in the first positiion): $[ln(1+x), \frac{1}{1+x},\frac{-1}{(1+x)^{2}}, \frac{2}{(1+x)^{3}}, \frac{-6}{(1+x)^{4}}, \frac{24}{(1+x)^{5}},\frac{-120}{(1+x)^{6}}]$
+
+When evaluated at zero we get, $[0,1,-1,2,-6,24,-120]$, which is very close to the sequence in #1. 
+
+Taylor series centered at zero:
+
+$\sum_{n=0}^{\infty}\frac{f^{n}(0)}{n!}(x)^{n}= 0 + \frac{1}{1!}x + \frac{(-1)}{2!}x^{2} + \frac{2}{3!}x^{3} + \frac{(-6)}{4!}x^{4} + \ldots$
+
+This reduces to,
+
+$ln(1+x) = \sum_{n=0}^{\infty}\frac{f^{n}(0)}{n!}(x)^{n}= x - \frac{1}{2}x^{2} + \frac{1}{3}x^{3} - \frac{1}{4}x^{4} + \ldots$
+
+Finally, we see that
+
+$ln(1+x) = -\sum_{n=1}^{\infty}\frac{(-1)^{n}x^{n}}{n}$ for all $|x|<1$
+
+
+

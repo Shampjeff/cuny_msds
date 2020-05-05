@@ -1,0 +1,54 @@
+---
+title: "Discussion 15"
+author: "Jeff Shamp"
+date: "5/5/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Taylor Series for sin(x)
+
+It is possible to write a trigonometric function as a polynomial thanks to the Taylor series. As a reminder the Taylor series is, 
+
+ $\sum_{n=0}^{\infty}\frac{f^{n}(a)}{n!}(x-a)^{n}$
+ 
+ and centered at zero we get, 
+ 
+ $\sum_{n=0}^{\infty}\frac{f^{n}(0)}{n!}(x)^{n}= f(0) + \frac{f'(0)}{1!}x + \frac{f"(0)}{2!}x^{2} + \ldots \frac{f^{n}(0)}{n!}x^{n}$
+
+
+If we have a function, it's derviatives, and those derivatives evaluated at zero, we can piece together a Taylor expansion so as to develop a polynomial expression for f(x), our given function. 
+
+Let's look at $f(x) = sin(x)$
+
+
+The first eight derivatives are (starting a zero) : $[sin(x), cos(x), -sin(x), -cos(x), sin(x), cos(x), -sin(x), -cos(x)]$
+
+You might be thinking, it repeats, that is expected as sine is periodic. If we evaluate the above at x=0 get the following, 
+$[0,1,0,-1,0,1,0,-1]$
+
+Now plug these values into our Taylor series we get
+
+$sin(x) = 0 + x + 0 - \frac{x^{3}}{3!} - 0 + \frac{x^{5}}{5!} + 0 -\frac{x^{7}}{7!} + \ldots$
+
+Which reduces to 
+
+$sin(x) =  x - \frac{x^{3}}{3!} + \frac{x^{5}}{5!} - \frac{x^{7}}{7!} + \ldots$
+
+These first few terms probably do a good job approximating the sine function but we can re-write it in sumation form as well.
+
+$sin(x) = \sum_{n=0}^{\infty}\frac{(-1)^{n+1}}{(2n+1)!}x^{2n+1}$
+
+
+
+
+
+
+
+
+
+
+
