@@ -1,0 +1,273 @@
+---
+title: "DATA 605 Final"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::material:
+    highlight: kate
+  number_sections: yes
+---
+
+```{r setup, echo=FALSE, cache=FALSE, message=FALSE}
+library(knitr)
+library(rmdformats)
+library(tidyverse)
+
+## Global options
+options(max.print="90")
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=90)
+```
+
+
+
+# Problem 1
+
+Using R, generate a random variable X that has 10,000 random uniform numbers from 1 to N, where N can be any number of your choosing greater than or equal to 6.  Then generate a random variable Y that has 10,000 random normal numbers with a mean of μ=σ=(N+1)/2.  
+
+
+**We will set up some parameters, check that it works, and then calculate the probabilities.**
+
+```{r}
+set.seed(945945)
+N<- 100
+samp<-10000
+mu<- (N+1)/2
+sd<-mu
+X<- runif(n = samp, min = 1, max = N)
+Y<- rnorm(n = N, mean = mu, sd = sd)
+df_1<- data.frame(X=X, Y=Y)
+df_1 %>%
+  ggplot() +
+  geom_histogram(aes(X))
+df_1 %>%
+  ggplot() +
+  geom_histogram(aes(Y))
+```
+
+## Probability{.tabset}
+
+Calculate as a minimum the below probabilities a through c.  Assume the small letter "x" is estimated as the median of the X variable, and the small letter "y" is estimated as the 1st quartile of the Y variable.  Interpret the meaning of all probabilities. 
+
+### Part A
+
+P(X>x | X>y)
+
+**We will define x and y first.**
+
+```{r}
+x<-quantile(df_1$X, 0.5)
+y<-quantile(df_1$Y, 0.25)
+paste("Median of X: ",x,"First quantile of Y: ",y)
+```
+
+**This is a conditional probability that X>x given that X>y. We want to know the probabiity that given X>y ~16, that is the chance that X>~50.**
+
+```{r}
+P_b_a<- df_1 %>% # prob of both conditions
+  filter(X > x, X > y) %>%
+  nrow()/samp
+P_a<- df_1 %>% # prob that X is already > y
+  filter(X > y) %>%
+  nrow()/samp
+P_a_b<- P_b_a / P_a
+paste("Probability of X>x given that X>y = ",P_a_b)
+```
+
+**Here we see that X > y and X > x exactly half the time and X > y ~.85, so it makes sense that there is a slight increase in the probability that X > than the median given that X > the first quantile of y.**
+
+### Part B
+
+P(X>x, Y>y)
+
+**This one is two separate varibales to it does not need a conditional term.**
+
+```{r}
+df_1 %>%
+  filter(X > x, Y > y) %>%
+  nrow()/samp
+```
+
+**So X is greater than the median of X AND Y is greater than it's first quantile, 37.68% of the time.**
+
+### Part C
+
+P(X<x | X>y)
+
+**This is will be a similar set up to the part A. When is X less than it's median given that it is greater than the first quantile of Y.**
+
+```{r}
+P_b_a<- df_1 %>%
+  filter(X < x, X > y) %>%
+  nrow()/samp
+
+P_a<- df_1 %>%
+  filter(X > y) %>%
+  nrow()/samp
+
+P_a_b<- P_b_a/P_a
+paste("Probability that X < x given that X > y = ",P_a_b)
+```
+
+## Marginal and Joint Probabilities
+
+Investigate whether P(X>x and Y>y)=P(X>x)P(Y>y) by building a table and evaluating the marginal and joint probabilities.
+
+
+**I'm going to do this brute force style, calculate each probability and then corral them into a dataframe to show.**
+
+```{r}
+# filter for conditions
+XY_ls_xy<- df_1 %>% filter(X < x, Y < y) %>% nrow()/samp
+X_gt_x_Y_ls_y <- df_1 %>% filter(X > x, Y < y) %>% nrow()/samp
+X_ls_x_Y_gt_y <- df_1 %>% filter(X < x, Y > y) %>% nrow()/samp
+XY_gt_xy<- df_1 %>% filter(X > x, Y > y) %>% nrow()/samp
+
+prob_table<- as.data.frame(matrix(c(XY_ls_xy, X_gt_x_Y_ls_y,
+                                    X_ls_x_Y_gt_y, XY_gt_xy),
+                                  byrow = TRUE, 
+                                  nrow = 2))
+prob_table$Total<- apply(prob_table,1,sum) # row wise sums
+prob_table[3,"V1"]<-sum(prob_table$V1, na.rm = TRUE) # get column sums
+prob_table[3,"V2"]<-sum(prob_table$V2, na.rm= TRUE)
+prob_table[3,"Total"]<-sum(prob_table$Total, na.rm = TRUE)
+rownames(prob_table)<- c("Y < y", "Y > y", "Total")
+DT::datatable(prob_table %>% rename("X < x" = "V1", "X > x" = "V2"),
+              extensions = c('FixedColumns',"FixedHeader"),
+              options = list(scrollX = FALSE, 
+                         paging=FALSE,
+                         fixedHeader=FALSE,
+                         dom  = 't'))
+```
+
+**There is a small difference between the P(X>x and Y>y) and P(X>x)\*P(Y>y), but the difference is 0.0018**
+
+
+## Independence Test
+
+Check to see if independence holds by using Fisher’s Exact Test and the Chi Square Test.  What is the difference between the two? Which is most appropriate?
+
+**We are now to perform two tests on the contingency table for the above data to determine if X and Y are independent. First, let's get the contingency table, then we can easily perform the tests. Fisher's test works for all samples so it can be a fine tool for this job. Chi-Square can also be used for independence and is works best with a large sample, which we have. A key difference between these tests is that Fisher's is an exact calculation of p-value and Chi squared is an approximation from the sampling distribution.**
+
+**In both of these tests we see that with a very large p-value we fail to reject the null hypothesis. These variables are independent, which I would expect given that they come from two different, random, independent variables.**
+
+
+```{r}
+count_table<- prob_table[1:2,1:2]*samp # use prob_table to get counts
+DT::datatable(count_table %>% rename("X < x" = "V1", "X > x" = "V2"),
+              extensions = c('FixedColumns',"FixedHeader"),
+              options = list(scrollX = FALSE, 
+                         paging=FALSE,
+                         fixedHeader=FALSE,
+                         dom  = 't'))
+```
+
+
+```{r}
+count_table<- count_table %>% rename("X < x" = "V1", "X > x" = "V2")
+fisher.test(count_table)
+```
+
+
+```{r}
+chisq.test(count_table)
+```
+
+
+# Problem 2
+
+Kaggle username : jeffshamp 
+Kaggle Competition Score : 
+
+
+
+## Descriptive and Inferential Statistics{.tabset}
+
+### Descriptive Statistics
+
+Provide univariate descriptive statistics and appropriate plots for the training data set.
+
+
+
+### Scatterplot Matrix
+
+Provide a scatterplot matrix for at least two of the independent variables and the dependent variable.
+
+
+
+### Correlation Matrix
+
+Derive a correlation matrix for any three quantitative variables in the dataset. 
+
+### Hypothesis Testing
+
+Test the hypotheses that the correlations between each pairwise set of variables is 0 and provide an 80% confidence interval. Discuss the meaning of your analysis. 
+
+
+
+Would you be worried about familywise error? Why or why not?
+
+
+
+## Linear Algebra and Correlation{.tabset}
+
+### Invert Correlation Matrix
+
+Invert your correlation matrix from above. (This is known as the precision matrix and contains variance inflation factors on the diagonal).
+
+
+
+### Precision and Correlation Matricies 
+
+Multiply the correlation matrix by the precision matrix, and then multiply the precision matrix by the correlation matrix. 
+
+
+
+### LU Decomposition
+
+Conduct LU decomposition on the matrix.  
+
+
+
+## Calculus-Based Probability & Statistics{.tabset}
+
+Many times, it makes sense to fit a closed form distribution to data.  Select a variable in the Kaggle.com training dataset that is skewed to the right, shift it so that the minimum value is absolutely above zero if necessary.
+
+
+
+### Optimum Lambda
+
+Load the MASS package and run fitdistr to fit an exponential probability density function. Find the optimal value of λ for this distribution
+
+
+
+### Sampling for Lambda
+
+Take 1000 samples from this exponential distribution using this value (e.g., rexp(1000, λ)).  Plot a histogram and compare it with a histogram of your original variable.   
+
+
+
+### Data Analysis
+Using the exponential pdf, find the 5th and 95th percentiles using the cumulative distribution function (CDF).   Also generate a 95% confidence interval from the empirical data, assuming normality.  Finally, provide the empirical 5th percentile and 95th percentile of the data.  Discuss.
+
+
+
+## Modeling
+
+Build some type of multiple regression  model and submit your model to the competition board.  Provide your complete model summary and results with analysis. 
+
+
+
+
+
+
+
+
+
+
