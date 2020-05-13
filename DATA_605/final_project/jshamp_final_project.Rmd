@@ -5,24 +5,21 @@ date: "`r Sys.Date()`"
 output:
   rmdformats::material:
     highlight: kate
-  number_sections: yes
 ---
 
 ```{r setup, echo=FALSE, cache=FALSE, message=FALSE}
 library(knitr)
 library(rmdformats)
 library(tidyverse)
-
+library(RCurl)
 ## Global options
-options(max.print="90")
+options(max.print="100")
 opts_chunk$set(echo=TRUE,
-	             cache=TRUE,
-               prompt=FALSE,
                tidy=TRUE,
                comment=NA,
                message=FALSE,
                warning=FALSE)
-opts_knit$set(width=90)
+opts_knit$set(width=100)
 ```
 
 
@@ -183,8 +180,21 @@ chisq.test(count_table)
 # Problem 2
 
 Kaggle username : jeffshamp 
-Kaggle Competition Score : 
 
+Kaggle Competition Score : 0.21138
+
+
+```{r}
+# Just showing the first six columns
+d<- getURL("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_605/final_project/train.csv")
+train_df<- read.csv(text=d, stringsAsFactors = FALSE)
+DT::datatable(train_df[,1:6], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLengh=7))
+```
 
 
 ## Descriptive and Inferential Statistics{.tabset}
@@ -193,11 +203,65 @@ Kaggle Competition Score :
 
 Provide univariate descriptive statistics and appropriate plots for the training data set.
 
+```{r}
+print("GrLivArea: Above grade (ground) living area square feet")
+summary(train_df$GrLivArea)
+print("Sale Price - target variable")
+summary(train_df$SalePrice)
+print("TotalBsmtSF: Total square feet of basement area")
+summary(train_df$TotalBsmtSF)
+print("LotArea: Lot size in square feet")
+summary(train_df$LotArea)
+```
+
+```{r}
+train_df %>%
+  ggplot(aes(x=SalePrice)) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Sale Price Histrogram with Density")
+
+train_df %>%
+  ggplot(aes(x=GrLivArea)) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Above Ground Living Area Histrogram with Density")
+
+train_df %>%
+  ggplot(aes(x=TotalBsmtSF)) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Total Basement Area Histrogram with Density")
+
+train_df %>%
+  ggplot(aes(x=LotArea)) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Total Lot Area Histrogram with Density")
+```
 
 
 ### Scatterplot Matrix
 
 Provide a scatterplot matrix for at least two of the independent variables and the dependent variable.
+
+```{r}
+pairs(train_df %>% dplyr::select(SalePrice, GrLivArea,
+                                 TotalBsmtSF, LotArea, OverallQual))
+```
+
+```{r}
+train_df %>%
+  ggplot(aes(x=factor(OverallQual), y=SalePrice, fill=factor(OverallQual))) +
+  geom_boxplot() +
+  labs(x= "Overall Quality", title="Sale Price by Overall Quality") +
+  theme(legend.position = "top") +
+  guides(fill=guide_legend(title="Quality Scale"))
+```
 
 
 
@@ -205,15 +269,47 @@ Provide a scatterplot matrix for at least two of the independent variables and t
 
 Derive a correlation matrix for any three quantitative variables in the dataset. 
 
+```{r}
+cor_matrix<- train_df %>%
+  dplyr::select(SalePrice, GrLivArea, TotalBsmtSF) %>%
+  cor() %>%
+  as.matrix()
+cor_matrix
+```
+
+**Lot Area appears to be the low performer, probably because of expensive apartments in an urban area like Boston.**
+
 ### Hypothesis Testing
 
 Test the hypotheses that the correlations between each pairwise set of variables is 0 and provide an 80% confidence interval. Discuss the meaning of your analysis. 
 
+Correlation Test with 80% confidence interval for GrLivArea
+```{r}
+cor.test(train_df$GrLivArea, train_df$SalePrice, conf.level = 0.8)
+```
 
+Correlation Test with 80% confidence interval for Total Basemnet SqFt
+```{r}
+cor.test(train_df$TotalBsmtSF, train_df$SalePrice, conf.level = 0.8)
+```
+
+Correlation Test with 80% confidence interval for Lot Area
+```{r}
+cor.test(train_df$GrLivArea, train_df$TotalBsmtSF, conf.level = 0.8)
+```
+
+
+**We see that for each pairwise comparison the p-value is very small, so can safely reject the null hypothesis that each correaltion is actually zero.** 
 
 Would you be worried about familywise error? Why or why not?
 
+**Regarding, familywise error it seems likely that some of the variables will fail to reject the null. Can calculate an adjusted p-value using the following $1-(1-\alpha)^{m}$ where is the number of test we perform.**
 
+```{r}
+1-(1-0.05)^3
+```
+
+**So it is indeed vary likely to wrongly find a "significant".**
 
 ## Linear Algebra and Correlation{.tabset}
 
@@ -221,40 +317,163 @@ Would you be worried about familywise error? Why or why not?
 
 Invert your correlation matrix from above. (This is known as the precision matrix and contains variance inflation factors on the diagonal).
 
+```{r}
+precision_matrix<- solve(cor_matrix)
+precision_matrix
+```
 
 
 ### Precision and Correlation Matricies 
 
 Multiply the correlation matrix by the precision matrix, and then multiply the precision matrix by the correlation matrix. 
 
+**Any matrix multiplied by it's inverse should be the indentity matrix.**
+
+```{r}
+round(cor_matrix %*% precision_matrix)
+```
+
+**The same must be true for the precision times correlation.**
+
+```{r}
+round(precision_matrix %*% cor_matrix)
+```
 
 
 ### LU Decomposition
 
-Conduct LU decomposition on the matrix.  
+Conduct LU decomposition on the matrix.
 
+**Homegrown LU Decomposition function.**
 
+```{r}
+matrix.factorize<- function(input_mat){
+  mat_L<-diag(dim(input_mat)[1])
+  row_idx<-1
+  for(j in 1:(dim(input_mat)[2]-1)){
+    for(i in 1:(dim(input_mat)[1]-row_idx)){
+      mat_L[i+row_idx,j]<-(input_mat[i+row_idx,j] /
+                             input_mat[j,j])
+      input_mat[i+row_idx,]<-((-1*mat_L[i+row_idx,j]) *
+                                input_mat[row_idx,]) +
+                                input_mat[i+row_idx,]
+    }
+  row_idx<-row_idx+1
+  }
+  return(list(input_mat, mat_L))
+}
+decomp<-matrix.factorize(cor_matrix)
+```
+
+```{r}
+matrix(decomp[[1]],nrow=3)
+decomp[[2]]
+decomp[[2]]%*%decomp[[1]]
+```
+
+**We see that this is the original correlation matrix when L and U multiplied.**
 
 ## Calculus-Based Probability & Statistics{.tabset}
 
 Many times, it makes sense to fit a closed form distribution to data.  Select a variable in the Kaggle.com training dataset that is skewed to the right, shift it so that the minimum value is absolutely above zero if necessary.
 
+**Recall `GrLivArea` as right skewed. We will apply a log transform this data**
+
+```{r}
+train_df %>%
+  ggplot(aes(x=GrLivArea)) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Above Ground Living Area Histrogram with Density")
+
+train_df %>%
+  ggplot(aes(x=log(GrLivArea))) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Above Ground Living Area Histrogram with Density")
+
+train_df %>%
+  ggplot(aes(sample=GrLivArea)) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - GrLivArea")
+
+train_df %>%
+  ggplot(aes(sample=log(GrLivArea))) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Log Transform of GrLivArea")
+```
 
 
 ### Optimum Lambda
 
 Load the MASS package and run fitdistr to fit an exponential probability density function. Find the optimal value of λ for this distribution
 
+```{r}
+library(MASS)
+exp_liv_area<- fitdistr(train_df$GrLivArea, "exponential")
+exp_liv_area
+```
 
 
-### Sampling for Lambda
+### Sampling with Lambda
 
 Take 1000 samples from this exponential distribution using this value (e.g., rexp(1000, λ)).  Plot a histogram and compare it with a histogram of your original variable.   
 
+```{r}
+exp_sample<-rexp(1000, exp_liv_area$estimate)
+
+ggplot(as.data.frame(exp_sample), aes(x=exp_sample)) +
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Exponential Distribution for GrLivArea with Density")
+
+train_df %>%
+  ggplot(aes(x=GrLivArea)) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Above Ground Living Area Histrogram with Density")
+
+```
 
 
-### Data Analysis
+### PDF, CI, and Percentiles
+
 Using the exponential pdf, find the 5th and 95th percentiles using the cumulative distribution function (CDF).   Also generate a 95% confidence interval from the empirical data, assuming normality.  Finally, provide the empirical 5th percentile and 95th percentile of the data.  Discuss.
+
+**5th and 95th percentiles from the exponential distribution.**
+
+```{r}
+qexp(0.05, rate=exp_liv_area$estimate)
+```
+
+```{r}
+qexp(0.95, rate=exp_liv_area$estimate)
+```
+
+**CI with assumed normality from the actual dataset.**
+
+```{r}
+SE<- sd(train_df$GrLivArea)/ (sqrt(length(train_df$GrLivArea)))
+lower<- mean(train_df$GrLivArea) - 1.960*SE
+upper<- mean(train_df$GrLivArea)+ 1.960*SE
+paste("95% CI for above ground living area (GrLivArea): ",
+      round(lower,3), " - ",round(upper,3) )
+```
+
+**Empircial 5th and 95th percentiles**
+
+```{r}
+quantile(train_df$GrLivArea, 0.05)
+quantile(train_df$GrLivArea, 0.95)
+```
+
+**We see that this data is, in fact, skewed to the right considering the 5th/95th percentiles and the true mean and it's 95% CI. The exponential distribution seems like an un-needed example in this context. Unless the was some kind of evidence that the data "shuold" be this way.**
 
 
 
@@ -263,11 +482,153 @@ Using the exponential pdf, find the 5th and 95th percentiles using the cumulativ
 Build some type of multiple regression  model and submit your model to the competition board.  Provide your complete model summary and results with analysis. 
 
 
+### General Approach
+
+**I'll keep this relatively simple. Let's look at above ground area, below ground area, garage size, and two measures of quality (house and garage). I think that several of these predictors could use a log transform to make them more normalized. Also it might be helpful to have at least one or two categorical variables; Overall Quality and GarageQual seems like a nice candidates. Garage quality will take work to get the dummy variables.**
+
+### Missing Values
+
+**Let's first check for missing values with our set of predictors.**
+
+```{r}
+train_df %>%
+  dplyr::select(GrLivArea, SalePrice, TotalBsmtSF, 
+                OverallQual, GarageQual, GarageCars) %>%
+  summarise_all(funs(sum(is.na(.))))
+
+train_df<-train_df %>%
+  dplyr::select(GrLivArea, SalePrice, TotalBsmtSF,
+                OverallQual, GarageQual, GarageCars)
+```
+
+**We need to fill some values for Garage Quality. Let's look at the most frequent rating.**
+
+```{r}
+train_df %>%
+  ggplot(aes(x=GarageQual)) +
+  geom_bar()
+```
+
+**We will fill NA's with `TA` rating.**
+
+```{r}
+train_df<- train_df %>%
+  mutate(GarageQual = replace_na(GarageQual, "TA"))
+```
 
 
+### Check for Outliers
+
+**I believe we have some outliers in GrLiveArea.**
+
+```{r}
+train_df %>%
+  dplyr::select(SalePrice, GrLivArea) %>%
+  ggplot(aes(x=GrLivArea, y=SalePrice)) +
+  geom_point() + 
+  labs(x="Above Ground Living Area",
+       y="Sale Price",
+       title="Sale Price v. Above Ground Living Area")
+```
 
 
+```{r}
+z_score<- scale(train_df$GrLivArea)
+train_df$GrLivArea_Z<- z_score
+max(z_score)
+```
 
+```{r}
+train_df<- train_df %>%
+  filter(GrLivArea_Z < 5)
+```
+
+### Categorical Variables
+
+**We need to convert the garage quality variable from a categorical to dummy numerical values.**
+
+```{r}
+library(caret)
+dmy <- dummyVars(" ~ .", data = train_df, fullRank = T)
+train_df <- data.frame(predict(dmy, newdata = train_df))
+
+glimpse(train_df)
+```
+
+
+### Multiple Regression
+
+**Let's try out regression and analyze the results. We tried garage area as well but found that it is not a better predictor than garage cars. Some of the categories for `GarageQual` have been deleted as the result of backward selection for predictors whose p-values were above 0.05 critical values (fails to reject null hypothesis for non-zero slope).**
+
+```{r}
+lin_reg<- lm(data=train_df, log(SalePrice) ~ log(GrLivArea)+ TotalBsmtSF + 
+               OverallQual + GarageCars +   GarageQualPo + GarageQualGd +
+               GarageQualTA)
+summary(lin_reg)
+```
+
+```{r}
+lin_reg %>%
+  ggplot(aes(x=resid(lin_reg))) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(x="Residuals", y="Count or Density",
+       title="Histogram of Residuals with Density")
+```
+
+
+### Test Data
+
+**Bring in the test data and predict new values.**
+
+```{r}
+d<- getURL(
+"https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/DATA_605/final_project/test.csv")
+test_df<- read.csv(text=d, header = TRUE, stringsAsFactors = F)
+test_df<-test_df %>%
+  dplyr::select(Id, GrLivArea, TotalBsmtSF, 
+                OverallQual, GarageCars, GarageQual)
+dmy <- dummyVars(" ~ .", data = test_df, fullRank = T)
+test_df <- data.frame(predict(dmy, newdata = test_df))
+glimpse(test_df)
+```
+
+**Predict the Sale Price values and clean up the formatting.**
+
+```{r}
+preds<-predict(lin_reg, test_df)
+preds<-as.data.frame(preds)
+rownames(preds)<-NULL
+```
+
+**Prepare the Kaggle Data Submission.**
+
+```{r}
+submission_data<- as.data.frame(cbind(test_df$Id, exp(preds)))
+submission_data<- submission_data %>%
+  rename(Id = "test_df$Id", SalePrice = "preds") %>%
+  mutate(SalePrice = replace_na(SalePrice, median(SalePrice, na.rm =T)))
+
+DT::datatable(head(submission_data),
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         dom="t"))
+```
+
+
+```{r}
+write.csv(submission_data, file = "Kaggle_Submit_Shamp.csv", 
+          quote = FALSE, row.names = FALSE)
+```
+
+**Not a great score, but we only considered a few variable of the many options. We were also constrained to multiple regression.**
+
+**Kaggle username : jeffshamp**
+
+**Kaggle Competition Score : 0.21138**
 
 
 
