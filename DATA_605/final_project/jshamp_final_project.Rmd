@@ -181,7 +181,7 @@ chisq.test(count_table)
 
 Kaggle username : jeffshamp 
 
-Kaggle Competition Score : 0.21138
+Kaggle Competition Score : 0.22253
 
 
 ```{r}
@@ -484,7 +484,7 @@ Build some type of multiple regression  model and submit your model to the compe
 
 ### General Approach
 
-**I'll keep this relatively simple. Let's look at above ground area, below ground area, garage size, and two measures of quality (house and garage). I think that several of these predictors could use a log transform to make them more normalized. Also it might be helpful to have at least one or two categorical variables; Overall Quality and GarageQual seems like a nice candidates. Garage quality will take work to get the dummy variables.**
+**I'll keep this relatively simple. Let's look at above ground area, below ground area, garage size and number of cars, and two measures of quality (house and garage). I think that several of these predictors could use a log transform to make them more normalized. Also it might be helpful to have at least one or two categorical variables; Overall Quality, and GarageQual seem like a nice candidates. Garage quality will take work to get the dummy variables.**
 
 ### Missing Values
 
@@ -501,6 +501,7 @@ train_df<-train_df %>%
                 OverallQual, GarageQual, GarageCars)
 ```
 
+
 **We need to fill some values for Garage Quality. Let's look at the most frequent rating.**
 
 ```{r}
@@ -509,7 +510,7 @@ train_df %>%
   geom_bar()
 ```
 
-**We will fill NA's with `TA` rating.**
+**We will fill NA's with `TA` rating in garage quality.**
 
 ```{r}
 train_df<- train_df %>%
@@ -555,13 +556,12 @@ train_df <- data.frame(predict(dmy, newdata = train_df))
 glimpse(train_df)
 ```
 
-
 ### Multiple Regression
 
 **Let's try out regression and analyze the results. We tried garage area as well but found that it is not a better predictor than garage cars. Some of the categories for `GarageQual` have been deleted as the result of backward selection for predictors whose p-values were above 0.05 critical values (fails to reject null hypothesis for non-zero slope).**
 
 ```{r}
-lin_reg<- lm(data=train_df, log(SalePrice) ~ log(GrLivArea)+ TotalBsmtSF + 
+lin_reg<- lm(data=train_df, log(SalePrice) ~ log(GrLivArea)+ log(TotalBsmtSF+1) + 
                OverallQual + GarageCars +   GarageQualPo + GarageQualGd +
                GarageQualTA)
 summary(lin_reg)
@@ -628,7 +628,7 @@ write.csv(submission_data, file = "Kaggle_Submit_Shamp.csv",
 
 **Kaggle username : jeffshamp**
 
-**Kaggle Competition Score : 0.21138**
+**Kaggle Competition Score : 0.22253**
 
 
 
