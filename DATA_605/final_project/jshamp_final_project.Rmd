@@ -181,7 +181,8 @@ chisq.test(count_table)
 
 Kaggle username : jeffshamp 
 
-Kaggle Competition Score : 0.22253
+Kaggle Competition Score : 0.18236
+
 
 
 ```{r}
@@ -628,7 +629,7 @@ write.csv(submission_data, file = "Kaggle_Submit_Shamp.csv",
 
 **Kaggle username : jeffshamp**
 
-**Kaggle Competition Score : 0.22253**
+**Kaggle Competition Score : 0.18236**
 
 
 
