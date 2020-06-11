@@ -71,8 +71,8 @@ spam_path<-paste0(data_path, '/spam')
 Using local files for data extraction since they are already downloaded. 
 
 ```{r}
-spam_path = "/Users/jeffshamp/Downloads/data/spam"
-ham_path = "/Users/jeffshamp/Downloads/data/ham"
+spam_path = "/Users/jeffshamp/Downloads/spam_data/SPAM"
+ham_path = "/Users/jeffshamp/Downloads/spam_data/HAM"
 ```
 
 This function crawls through the files and extracts the messages in there raw form. 

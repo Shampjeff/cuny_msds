@@ -1,0 +1,267 @@
+---
+title: "Spam vs Ham - Tidymodels Remix"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(tidymodels)
+library(textrecipes)
+library(xgboost)
+```
+
+# Cleaning and Data Preparation
+
+First, we will import, clean, and process the data for classification.
+
+## Datasets
+
+I found a large library of datasets [here](https://www.cs.bgu.ac.il/~elhadad/nlp16/spam_classifier.html). Below is an excerpt from the site regarding a library of resources. 
+
+>The email spam messages are collected from: <br />
+>The ENRON [email archive](http://www.aueb.gr/users/ion/data/enron-spam/) <br />
+>The Apache [Spam Assassin dataset](https://spamassassin.apache.org/publiccorpus/)
+To make the work simpler, the two datasets are put into a single zip file [here](http://www.cs.bgu.ac.il/~elhadad/nlp16/spam.zip) (107MB, contains about 60K files). <br />
+>The SMS dataset is from: [SMS data](https://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection) <br />
+>For Reference on class labels <br />
+>SOURCES = [ <br />
+    ('data/spam',        SPAM), <br />
+    ('data/spam_2,       SPAM), <br />
+    ('data/easy_ham_2,   HAM), <br />
+    ('data/easy_ham',    HAM), <br />
+    ('data/hard_ham',    HAM), <br />
+    ('data/beck-s',      HAM), <br />
+    ('data/farmer-d',    HAM), <br />
+    ('data/kaminski-v',  HAM), <br />
+    ('data/kitchen-l',   HAM), <br />
+    ('data/lokay-m',     HAM), <br />
+    ('data/williams-w3', HAM), <br />
+    ('data/BG',          SPAM), <br />
+    ('data/GP',          SPAM), <br />
+    ('data/SH',          SPAM) <br />
+]
+
+
+## Read Files
+
+I divided the files into two sets for spam and ham. There are ~67K files spread out over many folders, I will load them locally and read in the files. The zip files containing the data is on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data).
+
+
+Using local files for data extraction since they are already downloaded. 
+
+```{r}
+spam_path = "/Users/jeffshamp/Downloads/spam_data/SPAM"
+ham_path = "/Users/jeffshamp/Downloads/spam_data/HAM"
+```
+
+This function crawls through the files and extracts the messages in there raw form. 
+
+```{r read_file_func}
+make.data.frame<- function(path, class){
+  # Dig through the directories for messages
+  files <- list.files(path=path, 
+                      full.names=TRUE, 
+                      recursive=TRUE)
+  # Read a file once directories are gone
+  message<-lapply(files, function(x) {
+    text_body<-read_file(x)
+    })
+  # Add to dataframe and assign "id" column
+  message<-unlist(message)
+  data<-as.data.frame(message)
+  data$class<-class
+  return (data)
+} 
+```
+
+Make SPAM and HAM dataframes and bind them.
+
+```{r make_dataframes}
+data<-make.data.frame(spam_path, class="SPAM")
+data<-rbind(data, make.data.frame(ham_path, class="HAM"))
+```
+
+The SMS dataset can be bound as well. **Again, please see the zip files on [github](https://github.com/Shampjeff/cuny_msds/tree/master/DATA_607/data) or run the markdown chunk as R with `sms_path` in `read_lines` function to download and extract.** 
+
+Using the local file since it is already downloaded. 
+
+```{r}
+sms_data<- as.data.frame(
+  read_lines(
+  "/Users/jeffshamp/Downloads/smsspamcollection/SMSSpamCollection"
+    ))
+names(sms_data)<-"lines"
+sms_data<-sms_data %>%
+  separate(col = lines, into = c("class", "message"), sep = "\t") %>%
+  mutate(class = str_to_upper(class)) %>%
+  mutate(message = factor(message))
+
+data<-rbind(data, sms_data)
+```
+
+### Best of Text Messages
+
+Let's take a look at the messages and see what kind of divine prose our writers produce. 
+
+> "Shall I compare thee to a summer’s day? <br />
+> Thou art more lovely and more temperate: <br />
+> Rough winds do shake the darling buds of May, <br />
+> And summer’s lease hath all too short a date; <br />
+> Sometime too hot the eye of heaven shines, <br />
+> And often is his gold complexion dimm'd; <br />
+> And every fair from fair sometime declines, <br />
+> By chance or nature’s changing course untrimm'd; <br />
+> But thy eternal summer shall not fade, <br />
+> Nor lose possession of that fair thou ow’st; <br />
+> Nor shall death brag thou wander’st in his shade, <br />
+> When in eternal lines to time thou grow’st: <br />
+>  So long as men can breathe or eyes can see, <br />
+>  So long lives this, and this gives life to thee." <br />
+
+The above was [not a text message](https://www.poetryfoundation.org/poems/45087/sonnet-18-shall-i-compare-thee-to-a-summers-day) from SMS dataset. Our most verbose actor had the following, similar take on love...
+
+```{r}
+best_of<-sms_data %>%
+  mutate(length = str_length(message)) %>%
+  arrange(desc(length))
+str_split(best_of[1,'message'], "[.]")[[1]]
+```
+
+O Romeo, Romeo, wherefore art thou Romeo?
+
+## Text Clean Up
+
+Some classifiers (like XGBoost) need the target class to numerical, others do not (like Naive Bayes). I'll make both so that we can try out different modeling methods. 
+
+```{r}
+data_spam<-data %>%
+  filter(class == "SPAM") %>%
+  mutate(target = 1)
+data_ham<- data %>%
+  filter(class == "HAM") %>%
+  mutate(target = 0)
+data<-rbind(data_spam, data_ham)
+data$id <- 1:nrow(data)
+data$target<- as.factor(data$target)
+DT::datatable(data %>%
+              count(class, target),
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE,
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+
+```
+
+## Tidymodels and Text Processing
+
+We are revisiting this project for the purposes of using `tidymodels` as a replacement for the work previously done. Hopefully this will provide a more concise approach to modeling and text analysis. 
+
+```{r}
+data<-data %>%
+  select(-class) %>% # remove the class label as xgboost wants numerics
+  mutate(message= str_remove_all(message, pattern = "<.*?>")) %>%
+  mutate(message= str_remove_all(message, pattern = "[:digit:]")) %>%
+  mutate(message= str_remove_all(message, pattern = "[:punct:]")) %>%
+  mutate(message= str_remove_all(message, pattern = "[\n]")) %>%
+  mutate(message= str_to_lower(message))
+```
+
+Set up a recipe by which the data will be preprocessed for both the training and testing data. We can (have to for memory reasons) limit the maximum number of tokens prior to calculating the tfidf score. This is a massive improvement of using various elemets from the `tm` and `caret` packages. 
+
+```{r}
+spam_recipe<- 
+  recipe(target ~ message, data=data) %>%
+  step_tokenize(message) %>%
+  step_stem(message) %>%
+  step_stopwords(message) %>%
+  step_tokenfilter(message, max_tokens = 2000) %>%
+  step_tfidf(message)
+```
+
+Train, test split. It is much better than previous R packages as well, but I still like the sklearn version. 
+
+```{r}
+set.seed(9450)
+data_split<- initial_split(data, prop=.75, strata = target)
+train_data<- training(data_split)
+test_data<- testing(data_split)
+```
+
+
+# Modeling
+
+We will fit the data on a 5-fold cross validation scheme and collect the mean results for ROC AUC and accuracy. 
+
+```{r}
+xgb_mod<-                # create the model instance
+  boost_tree() %>%
+  set_engine("xgboost") %>%
+  set_mode("classification")
+
+cv_folds<- vfold_cv(train_data, 
+                    strata = target, 
+                    v = 5, repeats = 1)
+```
+
+Model, recipe, and cv folds set up we will now define a workflow and fit the data. 
+
+
+```{r warning=FALSE}
+xgb_wf<-                 # create and define the pipeline
+  workflow() %>%
+  add_recipe(spam_recipe) %>%
+  add_model(xgb_mod)
+```
+
+
+```{r}
+doParallel::registerDoParallel()
+
+xgb_fit<-
+  fit_resamples(
+    xgb_wf,
+    cv_folds, 
+    metrics = metric_set(roc_auc, accuracy), 
+    control = control_resamples(save_pred = TRUE)
+  )
+collect_metrics(xgb_fit)
+```
+
+Evaluate on the testing data. The `last_fit` functions does one last fit on the entire training set and then predicts on the test set. If you pass the `last_fit` the initial data split, it knows which set to use for the fits. That makes me a bit uncomfortable, it is a nice feature. 
+
+
+```{r}
+xgb_final<-
+  xgb_wf %>%
+  last_fit(data_split) %>%
+  collect_predictions() %>%
+  conf_mat(truth = target, estimate = .pred_class)
+```
+
+```{r}
+xgb_final
+```
+
+
+Very nice results. 169 wrongly classified messages. About twice as many false negatives as false positives. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

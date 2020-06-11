@@ -4,7 +4,8 @@ author: "Jeff Shamp"
 date: "2/21/2020"
 output:
   prettydoc::html_pretty:
-    theme: tactile
+    theme: architect
+    highlight: vignette
 ---
 
 ```{r setup, include=FALSE}
