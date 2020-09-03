@@ -1,0 +1,108 @@
+---
+title: "Mean Difference Testing"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+## Mean Difference Test - Introduction
+
+Often we run into data with a mixutre of numberical values and categorical values and it is important to consider both with rigor to extract insight. One approach that I like to use when exploring data is mean difference testing. That is to say, for some categorical type can we confidently observer a difference in means between the categories. This technique is used often in understanding the effect of treatments on a test group. For example, I recall a study in which reserachers were trying to determine if smoking during pregnancy had a measurable and significant impact on birth weight of babies. The researchers used mean difference for birth weights to compare the smokers to non-smokers. 
+
+This post will focus the mean difference approach using a much lighter dataset, the Palmer Penguins! 
+
+```{r, message=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+set.seed(9450)
+```
+
+
+## Get the Data
+
+The Palmer Penguin dataset is a set of observations of penguins from the Palmer Station in Antarctica. The categorical value we will focus on is the species of penguin and we will look at the flipper length of the penguins for possible mean difference. 
+
+```{r}
+penguin_df<- palmerpenguins::penguins
+```
+
+
+## Explore the Data
+
+Let's look at a simple bivariate plot of flipper length as a function of body mass. This assumes that heavier penguins have longer flippers. 
+
+```{r, message=FALSE, warning=FALSE}
+penguin_df %>%
+  ggplot(aes(body_mass_g, flipper_length_mm, color=species)) +
+  geom_point() +
+  labs(x="Body Mass", y="Flipper Length",
+       title="Flipper length as a function of Body Mass") +
+  theme_classic()
+
+```
+
+Here we see evidence of a strong association between flipper length and body mass. We also see that it is possible to differentiate between the Gentoo species and the Adelie and Chinstrap species. From this graph, however, it is not clear that we can meaningfully separate between Chinstrap and Adelie. 
+
+
+## Difference of Means
+
+Having the ability to say that several categorical values have distinct mean values is important in understanding how or why the groups are different. When I worked at a banking and loan start up we found it much more helpful to view clients by their mean loan application value rather than business industry as the industries did not have clearly separated lending needs. 
+
+Since there are many observations of each type of penguin, it is helpful to aggregate the information so as to get a population level view of each species. A simple approach to this is by looking at the mean value of flipper length for each species type. 
+
+```{r, message=FALSE, warning=FALSE}
+penguin_df %>%
+  group_by(species) %>%
+  summarize(
+    mean_flipper = mean(flipper_length_mm, na.rm = TRUE),
+    std_flipper = sd(flipper_length_mm, na.rm=TRUE)
+    )
+```
+
+Here we see that for each species the mean flipper lengths are different, but the standard deviation of the means are large enough to give us pause before claiming that are completely separable. That is, the mean values all appear to be within one or two standard deviations. So we need to dig a little further. 
+
+
+## Confidence Interval
+
+We can use the idea of Z-scores, standard error, and confidence intervals to further quantify the difference between the means and retain how much spread there may be from each mean. As a reminder, Z-score is a standardized way of scaling how many standard deviations a given data point is from it's mean value. We can vary how confident we would like to be by selecting a Z-score that encapsulates more (high confidence) or less (less confident) data and multiplying the Z-score by our standard error from the mean value per species. 
+
+Here we will calculate a 90% confidence interval (Z-score 1.645) and 99% confidence interval (Z-score 2.576). 
+
+We use the following formula below to calculate the upper and lower bound of the confidence interval. 
+
+$CI = \overline{x} \pm (Z * \frac{\sigma}{\sqrt(n)})$
+
+
+```{r, message=FALSE}
+penguin_df %>%
+  group_by(species) %>%
+  summarise(avg_flipper = mean(flipper_length_mm, na.rm = TRUE), 
+            std_flipper = sd(flipper_length_mm, na.rm = TRUE), 
+            count_species = n()) %>%
+  mutate( 
+    std_err = std_flipper/sqrt(count_species), 
+    lower_ci_99 = avg_flipper - (2.576 * std_err),  
+    upper_ci_99 = avg_flipper + (2.576 * std_err),
+    lower_ci_90 = avg_flipper - (1.645 * std_err),  
+    upper_ci_90 = avg_flipper + (1.645 * std_err)
+    ) %>%
+  ggplot(aes(species, avg_flipper, fill=species)) +
+  geom_crossbar(aes(ymin=lower_ci_90, ymax=upper_ci_90), 
+                width=0.4, show.legend = FALSE, alpha = 0.5) + 
+  geom_crossbar(aes(ymin=lower_ci_99, ymax=upper_ci_99), 
+                width=0.3, show.legend = FALSE, alpha=0.3, color = "NA") + 
+  labs(y="Mean Flipper Length", x="Species", 
+       title="90% and 99% CI for Mean Flipper Length") +
+  coord_flip( ) +
+  theme_classic()
+```
+
+Here we see a very nice separation between the mean flipper lengths of each species. The 99% CI is the lighter shaded region, and the 90% CI is the boxed region. It is important to note that there are more tests that could be preformed. We could calculate significance using a two-tailed test or ANOVA to determine significance for all three means at once, however we can clearly see that these means are distinct to 99% confidence. 
+
+## Conclusion
+
+Difference of mean is a simple, easy to see, and easy to interpret method of distinguishing between categorical values. Additionally, by looking at more than one confidence interval we can retain some measure of how much spread there may be between the mean values. 
+

@@ -1,0 +1,148 @@
+---
+title: "Simpson's Paradox"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+## Introoduction 
+
+Simpson's paradox is a phenomenon that arises in data analysis, which if not considered may lead to spurious conclusions or misleading predictions. The general idea of the paradox is that a data set in general may appear to trend in one direction (positive or negative) but trend in the opposite direction when divided by sub-grouping. This is problematic because looking at a too high level aggregation, especially if using a large data set, may led the novice data analyst to believe that the data has a negative (let's say) association for all groups. The overall trend may not be true for all groups contained within the data set. 
+
+We will look at a few examples, starting with the Palmer Penguins from [blog post #1]().
+
+We will omit the few observations with missing values. 
+
+## Palmer Penguins
+
+```{r, message=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+set.seed(9450)
+
+penguin_df<- 
+  palmerpenguins::penguins %>%
+  na.omit()
+
+
+DT::datatable(head(penguin_df))
+```
+
+## Population Level Aggregation
+
+
+If we look at a scatterplot of bill length and bill depth we can see the overall trend of length vs depth for the entire population. 
+
+
+```{r}
+penguin_df %>%
+  ggplot(aes(x=bill_length_mm, y=bill_depth_mm)) +
+  geom_point() + 
+  labs(x="Length", y="Depth", title="Bill Depth as a function of Bill Length") +
+  theme_classic()
+```
+
+If we were to naively regress this data for some kind of linear association we see the following.
+
+```{r}
+lin_reg <- lm(bill_depth_mm ~ bill_length_mm, data=penguin_df)
+
+penguin_df %>%
+  ggplot(aes(x=bill_length_mm, y=bill_depth_mm)) +
+  geom_point() +
+  geom_abline(slope = lin_reg$coefficients[[2]],
+              intercept = lin_reg$coefficients[[1]], 
+              color="red") +
+  labs(x="Length", y="Depth",
+       title="Regression of Depth as a function of Length") +
+  theme_classic()
+```
+
+Here we see a negative association between bill depth and bill length for the data set. Upon further analysis of the residuals we see that those residuals are reasonably normal and distributed about zero. 
+
+```{r, message=FALSE}
+lin_reg %>%
+  ggplot(aes(x=lin_reg$residuals)) +
+  geom_histogram(color="black") + 
+  labs(x="Residuals", y="Count", 
+       title="Residual Histogram") +
+  theme_classic()
+```
+
+Additionally, the linear regression summary suggests that we have reason to believe that small negative slope is non-zero (p-value << 0.05). 
+
+```{r}
+summary(lin_reg)
+```
+
+## Species Level Aggregation
+
+From this we might as well conclude that the longer the bill, the less deep it is. However, if you drill down from the population level to the species level we see the opposite result. 
+
+
+```{r}
+penguin_df %>%
+  ggplot(aes(x=bill_length_mm, y=bill_depth_mm, 
+             color=species)) +
+  geom_point() + 
+  labs(x="Length", y="Depth", title="Bill Depth as a function of Bill Length") +
+  theme_classic()
+```
+
+Bill depth _increases_ with bill length for each of the three species. Let's again regress linearly the species data and plot.
+
+```{r}
+chin<-
+  penguin_df %>%
+  filter(species == "Chinstrap")
+adelie<-
+  penguin_df %>%
+  filter(species == "Adelie")
+gentoo<-
+  penguin_df %>%
+  filter(species == "Gentoo")
+
+lm_chin<- lm(data=chin, bill_depth_mm ~ bill_length_mm)
+lm_adelie<- lm(data=adelie, bill_depth_mm ~ bill_length_mm)
+lm_gentoo<- lm(data=gentoo, bill_depth_mm ~ bill_length_mm)
+
+penguin_df %>%
+  ggplot(aes(x=bill_length_mm, y=bill_depth_mm, 
+             color=species)) +
+  geom_point() +
+  geom_abline(slope = lm_chin$coefficients[[2]],
+              intercept = lm_chin$coefficients[[1]], 
+              color="black") +
+  geom_abline(slope = lm_adelie$coefficients[[2]],
+              intercept = lm_adelie$coefficients[[1]], 
+              color="black") +
+  geom_abline(slope = lm_gentoo$coefficients[[2]],
+              intercept = lm_gentoo$coefficients[[1]], 
+              color="black") +
+  labs(x="Length", y="Depth",
+       title="Regression of Depth as a function of Length") +
+  theme_classic()
+
+```
+
+
+Here we see the paradoxical effect. The population data had a negative association, whereas the species level data has the opposite. The species level regression have similarly believable summary statistics. An example is below. 
+
+
+```{r, message=FALSE}
+lm_chin %>%
+  ggplot(aes(x=lm_chin$residuals)) +
+  geom_histogram(color="black") + 
+  labs(x="Residuals", y="Count", 
+       title="Residual Histogram Chinstrap Species") +
+  theme_classic()
+
+summary(lm_chin)
+```
+
+## Conclusion
+
+Defining a valid model is essential for extracting insight from data, and there is no substitute for rigorous data analysis. We see above that without carefully examining the data we may miss important relationships that exist within the data. Simpson's paradox is an example of how, depending on context, one might reach opposite conclusions for the same predictors. Those opposite conclusions may also be reasonably justifiable using basic statistical tools, e.g. null test on slope, residual distribution, standard error. 
