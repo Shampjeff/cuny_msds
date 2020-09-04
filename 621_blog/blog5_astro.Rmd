@@ -1,0 +1,204 @@
+---
+title: "Astronaut Dataset Regression"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: vignette
+---
+
+# Introduction
+
+I have been working on getting up to speed with Tidymodels since it as released last spring. For the fifth and final blog, let's use tidymodels to compare a few regression models. This data set is from the good people at RStudio and it details space missions from 1960 to 2020. I've beeb playing around with to practice cleaning data in addition to modeling with Tidymodels. 
+
+Thus is blog post will be part regression analysis and part tidymodel tutorial. 
+
+## Astronaut data 1960 - 2020
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(baguette)
+```
+
+Load data from the good people at RStudio
+
+```{r, message=FALSE}
+astronauts <- 
+  readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-14/astronauts.csv')
+```
+
+Cleaning up the data to isolate the orbiting module. 
+
+```{r}
+astronauts<- 
+  astronauts %>%
+  filter(hours_mission > 0 & in_orbit != "explosion") %>%
+  select(name, sex, nationality, year_of_birth,
+         year_of_selection, year_of_mission,
+         military_civilian, occupation, in_orbit, 
+         hours_mission) %>%
+  mutate(occupation = str_to_lower(occupation), 
+         occupation = case_when(
+           str_detect(occupation, "^space  tourist$") ~ "space tourist", 
+           str_detect(occupation, "space tourist") ~ "space tourist", 
+           TRUE ~ occupation
+            ), 
+         occupation = str_replace_all(occupation, "other.*", "journalist")) %>%
+  mutate(
+        in_orbit = str_to_lower(in_orbit),
+        in_orbit = str_remove_all(in_orbit, "[:digit:]"), 
+        in_orbit = str_remove_all(in_orbit, "[:punct:]\\B"),
+        in_orbit = case_when(
+          str_detect(in_orbit, "^sts") ~ "sts", 
+          str_detect(in_orbit, "^apollo") ~ "apollo", 
+          str_detect(in_orbit, "^gemini") ~ "gemini", 
+          str_detect(in_orbit, "^mir") ~ "mir", 
+          str_detect(in_orbit, "^salyut") ~ "salyut",
+          str_detect(in_orbit, "^saluyt") ~ "salyut",
+          str_detect(in_orbit, "^skylab") ~ "skylab",
+          str_detect(in_orbit, "^soyuz") ~ "soyuz",
+          str_detect(in_orbit, "^ma$") ~ "mercury-atlas",
+          TRUE ~ in_orbit)
+        ) %>%
+  mutate(hours_mission = log(hours_mission)) %>%
+  na.omit()
+```
+
+Bin the years to decades for simplicity. 
+
+```{r}
+astronauts %>%
+  mutate(year_of_mission = case_when(
+      year_of_mission < (10*(year_of_mission %/% 10))+5 ~ (10*(year_of_mission %/% 10)),
+      year_of_mission >= (10*(year_of_mission %/% 10))+5 ~  (10*(year_of_mission %/% 10))+5,
+      TRUE ~ year_of_mission
+  ), 
+  year_of_mission = factor(year_of_mission)) %>%
+  ggplot(aes(year_of_mission, hours_mission,
+             fill=year_of_mission)) +
+  scale_fill_brewer(palette = "Paired") +
+  geom_boxplot(alpha=0.5, show.legend = FALSE) +
+  theme_classic()
+```
+
+
+## Modeling
+
+Building a regression model based on the selected data. The prediction will be the log of the hours of a given mission. 
+
+```{r}
+set.seed(9450)
+astro_split<- initial_split(astronauts, strata = hours_mission, prop = .80)
+astro_train<- training(astro_split)
+astro_test<- testing(astro_split)
+```
+
+Adding a recipe for modeling. Updating the role of "id" and "name" to be ignored from the analysis and collapsing the lesser used occupations and orbiting modules as "Other". The `update_role` and `step_other` functions are nice additions. Also the `step_dummy` feature is a huge improvement over the fastdummies package. 
+
+Creating the recipe will not return the results of the `step_other`, to see and edit the results of that function you have to `prep()` and `juice()` the `astro_recipe`. 
+
+```{r}
+astro_recipe<- 
+  recipe(hours_mission ~ ., data = astro_train) %>%
+  update_role(name, nationality, new_role = "ID") %>%
+  step_other(occupation, in_orbit, other="Other") %>%
+  step_dummy(all_nominal(), -has_role("ID")) 
+
+astro_recipe
+```
+
+
+```{r}
+astro_wf<- 
+  workflow() %>%
+  add_recipe(astro_recipe) 
+```
+
+## Model Types
+
+We will do a tree boosted regression, a MARS regression, and the standard OLS. 
+
+```{r}
+tree_model<- 
+  bag_tree() %>%
+  set_engine("rpart", times = 30) %>%
+  set_mode("regression")
+
+tree_model
+```
+
+```{r}
+mars_model<- 
+  bag_mars() %>%
+  set_engine("earth", times=30) %>%
+  set_mode("regression")
+
+mars_model
+```
+
+```{r}
+ols_model<- 
+  linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+```
+
+
+
+```{r}
+tree_results<- 
+  astro_wf %>%
+  add_model(tree_model) %>%
+  fit(astro_train)
+
+mars_results<- 
+  astro_wf %>%
+  add_model(mars_model) %>%
+  fit(astro_train)
+
+ols_results<- 
+  astro_wf %>%
+  add_model(ols_model) %>%
+  fit(astro_train)
+```
+
+
+We can now make predictions and tie those predictions to the testing dataframe. I like to bind the results back to the data frame so everything is in one place. 
+
+```{r}
+test_results<- 
+  astro_test %>%
+  bind_cols(predict(tree_results, astro_test)) %>%
+  rename(pred_tree = .pred) %>%
+  bind_cols(predict(mars_results, astro_test)) %>%
+  rename(pred_mars = .pred) %>%
+  bind_cols(predict(ols_results, astro_test)) %>%
+  rename(pred_ols = .pred)
+```
+
+
+## Regression Metrics
+
+We will look at RMSE, MAE, and R Square (rsq). 
+
+```{r}
+test_results %>%
+  metrics(hours_mission, pred_tree)
+```
+
+
+```{r}
+test_results %>%
+  metrics(hours_mission, pred_mars)
+```
+
+
+```{r}
+test_results %>%
+  metrics(hours_mission, pred_ols)
+```
+
+We see here that the Tree boosted regression and MARS models were basically the same in evaluation metrics. The OLS model was the weaker of the three. Perhaps more feature engineering or greater detail on data transformation would improve that. 
+

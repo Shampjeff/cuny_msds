@@ -1,0 +1,168 @@
+---
+title: "Normality Testing and Transformation"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# Introduction
+
+We will be using the Boston Housing dataset for this blog post. This is the version of the data set that appeared in Kaggle and is used for open competitions. Read more about this data set [here](https://www.kaggle.com/c/house-prices-advanced-regression-techniques). 
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+Below is a sample of the data. Each row is an obsevarion of a house for sale in Boston and all the real estate information that accompanies the sale. 
+
+```{r}
+train_df<- 
+  read.csv("https://raw.githubusercontent.com/Shampjeff/cuny_msds/master/621_blog/train.csv", 
+           stringsAsFactors = FALSE)
+DT::datatable(train_df[1:6,], 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE,
+                         pageLengh=7))
+```
+
+## Exploratory Data Analysis
+
+We will start by looking at the distribution of several of the variables. 
+
+```{r, message=FALSE, warning=FALSE}
+train_df %>%
+  ggplot(aes(x=SalePrice)) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Sale Price Histrogram with Density") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(x=GrLivArea)) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Above Ground Living Area Histrogram with Density") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(x=TotalBsmtSF)) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Total Basement Area Histrogram with Density") +
+  theme_classic()
+
+```
+
+These are all examples of distribution with right skews. This is problematic for linear regression, as the underlying assumption in OLS is that the data are normally distributed. 
+
+
+## QQ Plot 
+
+One way to determine normality for a distribution is the plot the sample quantiles and theoretical quantiles together. A postively sloped line indicates that the data is normally distributed. 
+
+```{r}
+train_df %>%
+  ggplot(aes(sample=SalePrice)) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Sale Price") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(sample=GrLivArea)) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - GrLivArea") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(sample=TotalBsmtSF)) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Total Basement SqFt") +
+  theme_classic()
+```
+
+Here we see lifted tails and curving plots for each of the three plots. This makes sense given that the distributions were all right skewed. These variables could benefit from a transformation to make them more normal and thereby yielding better regression results. 
+
+
+## Log Transform
+
+Using a log transformation can often be very helpful in addressing skewed data. We will apply a log transform to each of the identified variables and plot the results. 
+
+```{r warning=FALSE, message=FALSE}
+train_df %>%
+  ggplot(aes(x=log(SalePrice))) + 
+  geom_histogram(aes(y=..density..),
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Log of Sale Price Histrogram with Density") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(x=log(GrLivArea))) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Log of Above Ground Living Area Histrogram with Density") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(x=log(TotalBsmtSF))) + 
+  geom_histogram(aes(y=..density..), 
+                 fill="lightblue",color="black", alpha=0.7) +
+  geom_density(color="red") +
+  labs(title="Log of Total Basement Area Histrogram with Density") +
+  theme_classic()
+```
+
+Looks much better and certainly less skewed. 
+
+## QQ Plot with Log Transform. 
+
+Let's revise the QQ plots for the log transforms. 
+
+
+```{r, message=FALSE, warning=FALSE}
+train_df %>%
+  ggplot(aes(sample=log(SalePrice))) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Log of Sale Price") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(sample=log(GrLivArea))) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Log of GrLivArea") +
+  theme_classic()
+
+train_df %>%
+  ggplot(aes(sample=log(TotalBsmtSF))) +
+  stat_qq() +
+  stat_qq_line() + 
+  labs(title="QQ Plot - Log of Total Basement SqFt") +
+  theme_classic()
+```
+
+Much better. We now have variable that are more normally distributed. We can more safely use these transformations in the modeling and prediction. 
+
+
+
+
+
+
+
+
+
+
+
