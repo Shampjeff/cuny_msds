@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+ 
+<title> DATA 608 Module 5 - Jeff Shamp </title>
+<script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+<script src="https://d3js.org/d3-fetch.v1.min.js"></script>
+<script type="text/javascript">
+
+//Reverses string 
+	function Reverse(reversed) {
+		return (reversed.split("").reverse().join(""));
+}	
+//Make interaction 
+	function DisplayReverse(){
+		var temp = document.getElementById("ReverseOutput");
+		temp.innerHTML = (Reverse(document.getElementById('InputString').value));
+}
+//Make table of multiples
+    function matrix(n){
+		row=""
+        for (var i = 1; i < 6; i++){
+         
+            var elem1 = n * (4*i - 3);
+            var elem2 = n * (4*i - 2);
+            var elem3 = n * (4*i - 1);
+            var elem4 = n * (4*i - 0);
+
+            rows =    
+            '<tr>' + '<td>' + elem1 + '</td>' +'<td>' + elem2 + '</td>' + 
+	    '<td>' + elem3 + '</td>' + '<td>' + elem4 + '</td>' + '</tr>'; 
+	    row=row+rows
+        }
+        table= "<table>" +row + "</table>"
+    return table; 
+    }
+	
+	
+//Make interaction for table
+	function DisplayTable(){
+        var temp2 = document.getElementById("TableOutput");
+        temp2.innerHTML = matrix(document.getElementById('InputNumber').value);
+    }
+
+
+</script>
+<body>
+<center>
+	<h1>DATA 608 Module 5 - Jeff Shamp</h1>
+<h3>Reverse a String </h3>
+    <input type="text" placeholder="Type in any string" id="InputString" name="InputString">
+    <button type="button" onclick="DisplayReverse();">Reverse it!</button>
+	<div id="ReverseOutput"></div>
+
+<h3>Number Multiplication Table </h3>
+	<input type="number" placeholder="Type in a number!" id="InputNumber">
+	<button type="button" onclick="DisplayTable();">Generate Table</button>
+	<br>
+		
+	<div id="TableOutput"></div>
+</center>
+	
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<center>
+  <div class="container">
+   <div class="table-responsive">
+    <h3 align="center">Presidents Table</h3>
+    <br />
+  <meta charset="utf-8">
+  <style>
+            table {
+                border-collapse: collapse;
+                border: 2px black solid;
+                font: 12px sans-serif;
+            }
+
+            td {
+                border: 1px black solid;
+                padding: 5px;
+            }
+        </style>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="d3.min.js?v=3.2.8"></script>
+    <script type="text/javascript"charset="utf-8">
+        d3.text("presidents.csv", function(data) {
+            var parsedCSV = d3.csv.parseRows(data);
+
+            var container = d3.select("body")
+                .append("table")
+
+                .selectAll("tr")
+                    .data(parsedCSV).enter()
+                    .append("tr")
+
+                .selectAll("td")
+                    .data(function(d) { return d; }).enter()
+                    .append("td")
+                    .text(function(d) { return d; });
+        });
+    </script>
+    
+  
+    </div>
+   </div>
+  </div>
+	</center>
+
+</body>
+</html>

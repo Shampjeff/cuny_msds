@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+    <style>
+        body { text-align: center; }
+        table {
+            border-collapse: collapse;
+            border: 2px black solid;
+            font: 12px sans-serif;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        td {
+            border: 1px black solid;
+            padding: 5px;
+        }
+        th {
+            padding: 5px;
+        }
+    </style>
+
+<title> DATA 608 Module 5 - Jeff Shamp </title>
+<script src = "https://d3js.org/d3.v4.min.js"></script>
+<script type="text/javascript">
+
+//Reverses string 
+	function Reverse(reversed) {
+		return (reversed.split("").reverse().join(""));
+}	
+//Make interaction 
+	function DisplayReverse(){
+		var temp = document.getElementById("ReverseOutput");
+		temp.innerHTML = (Reverse(document.getElementById('InputString').value));
+}
+//Make table of multiples
+    function matrix(n){
+		row=""
+        for (var i = 1; i < 6; i++){
+         
+            var elem1 = n * (4*i - 3);
+            var elem2 = n * (4*i - 2);
+            var elem3 = n * (4*i - 1);
+            var elem4 = n * (4*i - 0);
+
+            rows =    
+            '<tr>' + '<td>' + elem1 + '</td>' +'<td>' + elem2 + '</td>' + 
+	    '<td>' + elem3 + '</td>' + '<td>' + elem4 + '</td>' + '</tr>'; 
+	    row=row+rows
+        }
+        table= "<table>" +row + "</table>"
+    return table; 
+    }
+	
+	
+//Make interaction for table
+	function DisplayTable(){
+        var temp2 = document.getElementById("TableOutput");
+        temp2.innerHTML = matrix(document.getElementById('InputNumber').value);
+    }
+
+
+</script>
+
+<body>
+<center>
+	<h1>DATA 608 Module 5 - Jeff Shamp</h1>
+<h3>Reverse a String </h3>
+    <input type="text" placeholder="Type in any string" id="InputString" name="InputString">
+    <button type="button" onclick="DisplayReverse();">Reverse it!</button>
+	<div id="ReverseOutput"></div>
+
+<h3>Number Multiplication Table </h3>
+	<input type="number" placeholder="Type in a number" id="InputNumber">
+	<button type="button" onclick="DisplayTable();">Generate Table</button>
+	<br>
+		
+	<div id="TableOutput"></div>
+</center>
+    <h3 align="center">Presidents Table</h3>
+    <div>
+    <script type='text/javascript' src='script.js'></script>
+    </div>
+    Search by last name of president, case insensitive. 
+    <br>Reload the page to clear. Leave blank to load all data.  
+    <br><br>
+    
+<center>
+    <form>
+  <input id="search_name" type="text" placeholder="Search by Last Name">
+  <input type="button" value="Filter" onclick="filter_name();">
+    </form>
+</center>
+</body>
+</html>
