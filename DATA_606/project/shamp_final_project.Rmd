@@ -2,10 +2,7 @@
 title: "Congressional Voting Patterns"
 author: "Jeff Shamp"
 date: "`r Sys.Date()`"
-output:
-  prettydoc::html_pretty:
-    theme: architect
-    highlight: github
+output: pdf_document
    
 ---
 

@@ -1,0 +1,18 @@
+---
+title: "Shamp 608 Final Project - Pedestrian Fatalities NYC"
+author: "Jeff Shamp"
+date: "9/21/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NYPD Pedestrian and Cyclist Deaths
+
+The NYPD collects information about pedestrian and cyclist deaths and publishes the data to [NYC Open Data](https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95).
+
+I intend to show a series of summary statistics that give an overview of the aggregated data, trends over time, vehicle types, causes of death, and fatalities per borough. I would also like to dive into the data to see if we can determine which borough is the least safe for cyclist/pedestrians, who has made progress over time. Some kind of mapping of the fatalities would also be nice as these are peoples lives and perhaps we can determine something about density using mapped data. 
+
+I got back into biking during the lockdown in NYC and I have always wondered which borough is the most dangerous. Also the "vision-zero" plan has been a thing for several years now, and I wonder if there has been any impact in real terms. 
