@@ -1,0 +1,377 @@
+---
+title: "DATA 624 - HW1"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# Question 2.1
+## Questions
+Use the help function to explore what the series gold, woolyrnq and gas
+represent.
+ a. Use `autoplot()` to plot each of these in separate plots.
+ b. What is the frequency of each series? Hint: apply the `frequency()` function.
+ c. Use `which.max()` to spot the outlier in the gold series. Which observation
+ was it?
+ 
+## Answers
+### Help Functions
+```{r, echo=TRUE, warning=FALSE, out.width="100%", message=FALSE}
+library(fpp2)
+library(httr)
+```
+
+According to the help function, the datasets are described as so:
+
+gold - The daily morning gold prices in US dollars from
+January 1st, 1985 to March 31st, 1989.
+
+woolyrnq - The quarterly production of woollen yarn in
+Australia in tons from March 1965 to September 1994.
+
+gas - The Australian monthly gas prodcution from 1956 to
+1995.
+
+### Part a
+Using the `autoplot` function can give us a graphic disply of `ts` datasets.
+Looking at the graphs we can see if there is any trend, seasonality, or other
+cyclical patterns in the datasets.       
+
+```{r}
+autoplot(gold)
+autoplot(woolyrnq)
+autoplot(gas)
+```
+
+### Part b
+Using the `frequency` function, we find that Gold has annual frequency, Woolrnq
+has quarterly frequency, and Gas has monthly frequency. I really like these kinds of helper functions in R. It gives the language a community feel and provides nice features. 
+
+```{r}
+frequency(gold)
+frequency(woolyrnq)
+frequency(gas)
+```
+
+### Part c
+
+The `which.max()` function gives us the *index* of the outlier with maximum
+value. To find the maximum value of gold, we need to filter the dataset for the maximum value, which is 593.7.
+
+```{r}
+which.max(gold)
+gold[which.max(gold)]
+```
+
+# Question 2.2
+## Questions
+Download the `tute1.csv` file 
+[book website](http://otexts.com/fpp2/extrafiles/tute1.csv).
+
+a. Read the data into R with the following script:
+b. Convert the data to time series
+c. Construct time series plots of each of the three series. Check what happens when you don’t include facets=TRUE .
+
+## Answers
+
+### Part a. 
+
+This is trival by now but we can load the file from the web. 
+
+```{r}
+tute<- "http://otexts.com/fpp2/extrafiles/tute1.csv"
+tute1<- read.csv(tute, header = TRUE)
+head(tute1)
+```
+
+### Part b.
+
+This is given in the book
+
+```{r}
+tute_ts <- ts(tute1[,-1], start=1981, frequency=4)
+```
+
+
+### Part c.
+
+Again, this is given. autoplot is a nice feature. First we will set facet to "TRUE"
+
+```{r}
+autoplot(tute_ts, facets=TRUE)
+```
+
+And now with the facets switched to "FALSE"
+
+```{r}
+autoplot(tute_ts, facets=FALSE)
+```
+Luck for us, these three columns for Sales, AdBudget, and GDP are scaled in such a way that they can be clearly plotted without facet wrapping and there are no issues. If the numbers overlapped more, the non-wrapped plot (above) would be a disaster. Additionally, the lack of a proper scale for each timeseries, makes it difficult to patterns in each of the data. This is especially true for the GDP plot. 
+
+
+
+# Question 2.3
+## Questions
+
+Download some monthly Australian retail data from the
+[book website](http://otexts.com/fpp2/extrafiles/tute1.csv). 
+ 
+a. Read the data into R.
+
+b. Select one of the time series (replace the column name with
+ your own chosen column):
+ 
+c. Explore your chosen retail time series using the following functions:
+     ```autoplot(), ggseasonplot(), ggsubseriesplot(), gglagplot(), ggAcf()```
+    Can you spot any seasonality, cyclicity and trend? What do you learn about
+    the series?
+    
+## Answers
+### Part a
+
+We will use a GET request to pull in the data, write it locally and read the `xlsx` file as a dataframe
+
+```{r}
+url <- "https://otexts.com/fpp2/extrafiles/retail.xlsx"
+GET(url, write_disk("retail.xlsx", overwrite=TRUE))
+retail<- readxl::read_excel("retail.xlsx", skip=1)
+```
+
+### Part b
+
+This is given by the book
+
+```{r}
+myts <- ts(retail[, "A3349721R"], frequency = 12, start = c(1982, 1))
+head(myts)
+tail(myts, 6)
+```
+
+### Part c
+
+Now we can explore the data with the various plotting routines. We can see that there is indeed a trend and seasonality in the graph.                                            
+
+```{r}
+autoplot(myts)
+```
+
+With `ggseasonplot`, We can see the year-over-year changes due to seasonality, where
+September is the peak and November is the trough season. The stack of this graph also confirms the increasing trend. 
+
+```{r}
+ggseasonplot(myts)
+```
+
+Here the `subseriesplot` we can see the range of values for each month of the time series. This plot is not proof positive (in my opinion), but we see that September appears to be noticeably higher and November is noticeably low than the remaining months. 
+
+```{r}
+ggsubseriesplot(myts)
+```
+
+A `lagplot` shows the scatter plots for each month in which all the graphs show
+linearity. This suggests that a strong autocorrelations exits.   
+
+```{r}
+gglagplot(myts)
+```
+
+Which brings us to `ggACF`. We can also see that with the increase in lag period the graphs show decreasing positive values, which is expected with trended data. When we plot a very large set of lags (shown 120) we see a faint indication of seasonality. 
+
+```{r}
+ggAcf(myts, lag = 120)
+```
+
+### Q2 Summary
+
+Here we have a strong trend in our data and light seasonality. There are no cyclic patterns present in this data set.      
+
+# Question 2.6
+## Questions
+
+Use the following graphics functions: `autoplot()` , `ggseasonplot()`,
+`ggsubseriesplot()` , `gglagplot()` , `ggAcf()` and explore features from the
+following time series: `hsales` , `usdeaths` , `bricksq` , `sunspotarea`,
+`gasoline`. 
+
+Can you spot any seasonality, cyclicity and trend?
+What do you learn about the series?
+
+## Answers 
+### HSales
+
+We will do a series of plots for each dataset. This data set is sales of one family houses in the US from 1973.
+This data appears to be cyclic and has some seasonality to it, but with no obvious trend.
+
+```{r}
+autoplot(hsales)
+```
+
+For the season plot, we have a bit of mess. We can say that there is a seaonality to this data in that sales picks up a lot in the early spring and slowly tapers into the winter. Housing sales we super high in the late 70s and then tanked by 1981. What a rollercoaster. 
+
+```{r}
+ggseasonplot(hsales)
+```
+
+The subseries plot again shows a seasonal effect that March is when sales is best and December is the slowest month. The wide variation in the monthly plots suggests there could be some cyclic behavior as well. Maybe there are macro ecomonic reasons sales go down in the given year. Say, for example, a global financial meltdown.
+
+```{r}
+ggsubseriesplot(hsales)
+```
+
+The lag plots show some positive correaltions at lag 1, 2, 10, 11, and 12 so it seems there is a good seasonality to this data. This plot is too much of a mess to be helpful.
+
+```{r}
+gglagplot(hsales)
+```
+The ACF is interesting. If we take the long view on lags, we see the seasonality of the data clearly as well as a strong cyclic pattern. 
+
+```{r}
+ggAcf(hsales, lag=120)
+```
+
+### usdeaths
+
+Deaths are seasonal?! There appears to be no major trend from this plot, nor are the strong signs of cycling. 
+
+```{r}
+autoplot(usdeaths)
+```
+
+Deaths are seasonal. Wow. I'm, amazed that the most deaths are coming in the summer months as well. Also, what happened in 1973? I would expect almost all years to be closely grouped like in 74-78. 
+
+```{r}
+ggseasonplot(usdeaths)
+```
+
+July has the highest deaths and February has the lowest. Aside from high values in 1973, there does not seem to be an indication of a trend of cyclic pattern. It would be great to see several more years of data, to determine if the there is a long-term trend of cycle in deaths. 
+
+```{r}
+ggsubseriesplot(usdeaths)
+```
+
+We have several positive and negative correlations in this data, which underlines the seasonality. Lags 5-8 have negative association and 10-13 have positive association. 
+
+```{r}
+gglagplot(usdeaths)
+```
+
+Interesting, the ACF plot seems to suggest that there is some downward trend in deaths. That makes sense, for two reasons; 1) medical improvements and 2) the negative correlations on each season seem to have a large overall effect on the trend of the data. Again, more years of data would be great to investigate the presence of a long-term trend. 
+
+```{r}
+ggAcf(hsales, lag=36)
+```
+
+
+### bricksq
+
+Quarterly clay brick production in Aus from 1956-1994. This data set at first autoplot seems to have a little bit of everything. There is some upward trend, with seasonality and potentially come cycles that span several years. 
+
+```{r}
+autoplot(bricksq)
+```
+
+It's hard to split out seasonality from this plot due to potential other effects. We might be able to suggest some sort of seasonality that peaks in Q3 and is a minimum in Q1. Maybe this is due to ramp in construction followed by a decline based on weather. 
+
+```{r}
+ggseasonplot(bricksq)
+```
+
+So there appears to be seasonality from Q1 to Q3 as well as other effects like trend (each quarter has a long tail) and cycling (variation above the median). 
+
+```{r}
+ggsubseriesplot(bricksq)
+```
+
+Very strong autocorrelations with some noise at the hgher values. 
+
+```{r}
+gglagplot(bricksq)
+```
+
+This is what we would expect to see for trended data that is seasonal. 
+
+```{r}
+ggAcf(bricksq, lag=36)
+```
+
+Thre could also be the presence of some kind of cycle around the 1980s, but it is not super clear from these plot types. The data is trended and has a strong seasonality from Q1 to Q3. 
+
+### sunspotarea
+
+Annual sunspot area from 1875-2015. What a time span! Astronomers are an incredible community. 
+
+This appears to be cycling data. There might a be trend for a few years, but it doesn't appear to be super strong. Seasonality appears weak from this plot. 
+
+```{r}
+autoplot(sunspotarea)
+```
+
+`ggseasonplot` says these data are not seasonal. Error message: *Error in ggseasonplot(sunspotarea) : Data are not seasonal*
+
+```{r}
+#ggseasonplot(sunspotarea)
+```
+Same is true for `ggsubseriesplot`
+
+```{r}
+#ggsubseriesplot(sunspotarea)
+```
+
+There are solid positve and negative autocorrelations at lag 1,2, 5, and 6. This appears to suggest some kind of cycling as seasonality is not a factor in this dataset. 
+
+```{r}
+gglagplot(sunspotarea)
+```
+
+So we have a multi-year cycling pattern to sun spot areas. 
+
+```{r}
+ggAcf(sunspotarea, lag=36)
+```
+
+### gasoline
+
+Weekly gasoline production in the US from 1991 to 2017. Measured in million barrels per day. 
+
+There is a clear trend and seasonality. There could be early signs of cycling from 2000 to the end of the data. 
+
+```{r}
+autoplot(gasoline)
+```
+
+There seems to be a seasonal effect with a minimum around the 4th week and a maximum around the 30th week. That would a low in the beginning of February and a high in mid-July. 
+
+```{r}
+ggseasonplot(gasoline) +
+  theme(axis.text.x = element_text(angle = 90,
+                                   hjust = 1,
+                                   size = 8))
+```
+
+We need to change the frequency of this plot to weeks to plot. There is solid seasonality with production lowest in the winter and highest in the summer. 
+
+```{r}
+gas_mod<- ts(gasoline, frequency = 52)
+ggsubseriesplot(gas_mod)
+```
+
+Very strong autocorrealtion. Gas production seems to only go one-way when viewed in aggregate. 
+
+```{r}
+gglagplot(gasoline)
+```
+
+Again, we see trended data with seasonality. 
+
+```{r}
+ggAcf(gasoline, lag=100)
+```
+
+
+
+
+
+
