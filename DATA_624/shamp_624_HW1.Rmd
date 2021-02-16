@@ -165,7 +165,7 @@ September is the peak and November is the trough season. The stack of this graph
 ggseasonplot(myts)
 ```
 
-Here the `subseriesplot` we can see the range of values for each month of the time series. This plot is not proof positive (in my opinion), but we see that September appears to be noticeably higher and November is noticeably low than the remaining months. 
+Here the `subseriesplot` we can see the range of values for each month of the time series. This plot is not proof positive (in my opinion), but we see that September appears to be noticeably higher and November is noticeably lower than the remaining months. 
 
 ```{r}
 ggsubseriesplot(myts)
