@@ -261,7 +261,7 @@ gglagplot(usdeaths)
 Interesting, the ACF plot seems to suggest that there is some downward trend in deaths. That makes sense, for two reasons; 1) medical improvements and 2) the negative correlations on each season seem to have a large overall effect on the trend of the data. Again, more years of data would be great to investigate the presence of a long-term trend. 
 
 ```{r}
-ggAcf(hsales, lag=36)
+ggAcf(usdeaths, lag=36)
 ```
 
 
