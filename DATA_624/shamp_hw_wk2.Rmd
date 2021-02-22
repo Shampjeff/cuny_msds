@@ -11,12 +11,14 @@ output:
 # Question HA 3.1
 ## Question
 For the following series, find a appropriate Box-Cox transformation in order to stablize the variance.
-* usnetelec
-* usgdp
-* mcopper
-* enplanements
 
-```{r echo=TRUE, warning=FALSE, out.width="100%", message=FALSE}
+1. usnetelec
+2. usgdp
+3. mcopper
+4. enplanements
+
+
+```{r echo=FALSE, warning=FALSE, out.width="100%", message=FALSE}
 library(fpp2)
 ```
 
@@ -183,14 +185,14 @@ How sensitive are the accuracy measures to the training/test split?
 
 There are changes in the accuarcy scores for different splits of time (train on 2009, test on 2010 i.e.), but the differences are marginal and the results are all about the same (very poor in this case). After trying several years in train, test splits the MASE is generally about 2-3 and the RMSE is ~150. 
 
+
+In general, a single train/test split is probably ill-advised. With time series data the random split could occur at a point in time that is a significant outlier, that would like skew the training or testing results. We could try to split at a more "cherry-picked", split to avoid spilts at locations likely to adversly affect the training or testing results. 
+
+
 ```{r}
 myts.train <- window(myts, end=c(2008,12)) 
 myts.test <- window(myts, start=2009)
 fc_2 <- snaive(myts.train)
 accuracy(fc_2,myts.test)
-
-# fc_3 <- tsCV(myts, forecastfunction=snaive)
-# 
-# accuracy(fc_3, myts)
 ```
 
