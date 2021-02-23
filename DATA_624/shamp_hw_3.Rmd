@@ -1,0 +1,230 @@
+---
+title: "634 HW 3 - Decomposition"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r echo=FALSE, warning=FALSE, out.width="100%", message=FALSE}
+library(fpp2)
+```
+
+
+
+# Question HA 6.2
+## Question
+The `plastics` data set consists of the monthly sales (in thousands) of product
+A for a plastics manufacturer for five years.
+
+ a. Plot the time series of sales of product A. Can you identify seasonal
+ fluctuations and/or a trend-cycle?
+ b. Use a classical multiplicative decomposition to calculate the trend-cycle
+ and seasonal indices.
+ c. Do the results support the graphical interpretation from part a?
+ d. Compute and plot the seasonally adjusted data.
+ e. Change one observation to be an outlier (e.g., add 500 to one observation),
+ and recompute the seasonally adjusted data. What is the effect of the outlier?
+ f. Does it make any difference if the outlier is near the end rather than in
+ the middle of the time series?
+ 
+  
+## Answers
+### Part a
+
+```{r}
+autoplot(plastics)
+```
+
+The graphs shows clear seasonality. The winter months have low values, which
+climb in the spring and summer, and then fall during fall. There is also a
+long-term increasing trend in the sales figures. There is too little
+data to determine if this increasing trend is part of a larger cycle. We would need 
+more data to determine the presence of any cycling behavior. 
+
+**For the remaing parts we will calculate values using the same methodology as the text.**
+
+### Part b
+
+This data has monthly frequency, so \(m = 12\) and \(\hat{T}_n\) should be
+calculated as a 2x12-period moving average.
+
+```{r}
+Tn <- ma(plastics, order = 12, centre = TRUE)
+```
+
+Classic multiplicative decomposition detrends by dividing out the MA. 
+
+```{r}
+detrend_plastic <- plastics / Tn
+```
+
+Classical decomposition adjusts for seasonality by calculating \(\hat{S}_n\),
+the average value per cycle---here monthly---and then subtracting it for
+additive, or dividing it out for multiplicative, from the detrended series.
+
+```{r}
+Sn <- double(12)
+for (i in seq_len(12)) {
+    Sn[i] <- mean(detrend_plastic[cycle(detrend_plastic) == i],
+                  na.rm = TRUE)
+}
+```
+
+The raw values need to be adjusted so that their sum equals \(m\), which is 12.
+Again, this is from the textbook.
+
+```{r}
+Sn <- 12 * Sn / sum(Sn)
+```
+
+The random component of the times series, \(\hat{R}_n\) is calculated in 
+classic multiplicative decomposition as the quotient of the raw values with
+the product of the trend-cycle and seasonal components.
+
+```{r}
+Rn <- plastics / (Tn * Sn)
+```
+
+We can check these results by comparing them to the output of the `decompose`
+function. This should output a simple True/False for whether the values are equal.
+
+```{r}
+decomp_plastic <- decompose(plastics, type = 'multiplicative')
+all.equal(decomp_plastic$trend, Tn)
+all.equal(decomp_plastic$figure, Sn)
+all.equal(decomp_plastic$random, Rn)
+```
+
+And we will output the components below: \(\hat{S}_n,
+\hat{T}_n\), and \(\hat{R}_n\).
+
+```{r}
+Sn
+Tn
+Rn
+```
+
+
+### Part c.
+
+There is a very clear seasonality shown in \(\hat{S}_n\). 
+Additionally, there is also a clear increasing trend shown in \(\hat{T}_n\). 
+The trend component shows a peak around February and March
+of year five. This suggests that instead of a pure upward trend there _may_ be a
+longer-term cycle. This does suggest that the classical decomposition supports the 
+graphical interpretation from above as we have clear, non-zero values for each
+component in the data. 
+
+### Part d.
+
+```{r}
+autoplot(decomp_plastic)
+```
+
+The seasonally-adjusted data is \(\hat{T}_n\hat{R}_n\) which is plotted below.
+
+```{r}
+plot(Tn * Rn, ylab = "Seasonally-Adjusted")
+```
+
+### Part e.
+
+We will rework the above code into one chunk for this question and add an outlier. 
+
+```{r}
+plastics_2 <- plastics
+plastics_2[[26]] <- plastics_2[[26]] + 500
+Tn2 <- ma(plastics_2, order = 12, centre = TRUE)
+detrend_plastics_2 <- plastics_2 / Tn2
+Sn2 <- double(12)
+for (i in seq_len(12)) {
+    Sn2[i] <- mean(detrend_plastics_2[cycle(detrend_plastics_2) == i],
+                   na.rm = TRUE)
+}
+Sn2 <- 12 * Sn2 / sum(Sn2)
+plot(Sn, type = 'l')
+lines(Sn2, col = 'blue')
+autoplot(decompose(plastics_2, type = 'multiplicative'))
+```
+
+Adding of an outlier to February in the middle of the time series gives a 
+bump to that period in the seasonality index and does seem to have an effect 
+on the moving average. The overall shape and scale of the decompositions
+are similar, suggesting some level of tolerance to a single outlier. 
+
+### Part f.
+
+```{r}
+plastics_3 <- plastics
+plastics_3[[2]] <- plastics_2[[2]] + 500
+Tn3 <- ma(plastics, order = 12, centre = TRUE)
+detrend_plastics_3 <- plastics_3 / Tn3
+Sn3 <- double(12)
+for (i in seq_len(12)) {
+    Sn3[i] <- mean(detrend_plastics_3[cycle(detrend_plastics_3) == i],
+                   na.rm = TRUE)
+}
+Sn3 <- 12 * Sn3 / sum(Sn3)
+plot(Sn, type = 'l')
+lines(Sn3, col = 'purple')
+autoplot(decompose(plastics_3, type = 'multiplicative'))
+```
+
+Here, the outlier was added early in the dataset. In this case it had
+no effect at all, as it outside the acceptable window for the moving
+average. Here the downside of a moving average actually plays to our advantage
+as the outlier is beyond the calculatable window. 
+
+ 
+# Question 6.3 HA
+## Question
+
+Recall your retail time series data (from Exercise 3 in Section 2.10). Decompose the series using X11. Does it reveal any outliers, or unusual features that you had not noticed previously?
+
+### Answer
+
+First, reload the data again for this week. 
+
+```{r}
+library(httr)
+url <- "https://otexts.com/fpp2/extrafiles/retail.xlsx"
+GET(url, write_disk("retail.xlsx", overwrite=TRUE))
+retail<- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retail[, "A3349721R"], frequency = 12, start = c(1982, 1))
+```
+
+And we will remind ourselves of what this looks like. 
+Also, if we look back to HW1, we are reminded that this data is monthly, 
+which is a use case for X11. Also this time series has a clear seasonal component
+that is increasing (seemingly) slowly over time, which is also a prime use case
+for X11. This seems like a good method-to-data fit. 
+
+```{r}
+autoplot(myts)
+```
+
+Now let us use X11 Decomposition on this dataset. 
+
+```{r}
+library(seasonal)
+fit_myts<- 
+  myts %>%
+  seas(x11="")
+
+autoplot(fit_myts) +
+  ggtitle("X11 Decomposition of Monthly Aussie Retail Data")
+```
+
+The X11 decomposition seems to suggest that the year previous to 2005 were less (for lack of a better word)  "predictable" that after 2005. The remainder for the years after 2005 appear to be smaller, which suggests the trend and seasonality measures can better capture the data. There do not appear to be any major outliers in the data, but there are some "bumps" around 2003 and 2008 that are otherwise very hard to detect from the autoplot. Additionally, the seasonality appears to be less consistent early-on in the data (hence the more wild remainders). These are much easier to see on the X11 decomposition.
+
+Below, we show a multiplicative decomp for comparison to X11. The classic decomposition definitely misses the nuance in seasonality and smoothes over some of the bumps in the early 2000s, though they are still present. 
+
+```{r}
+autoplot(decompose(myts, type = 'multiplicative'))
+```
+
+
+
