@@ -44,8 +44,7 @@ consider using dummy variables.
 
 The first visualization step is usually to plot the distribution of
 each of the variables. Below are histograms for each of
-the 10 variables. To make life a bit simpler, the factor `Type` will be
-converted to an integer. 
+the 10 variables. To make life a bit simpler, we will exclude `Type`.
 
 ```{r warning=FALSE, message=FALSE}
 Glass %>%
@@ -60,11 +59,11 @@ Glass %>%
 The plots show that some of the variable such as Potassium (**K**), Barium
 (**Ba**), and Iron (**Fe**) have classic very right-tailed skew distributions.
 Others, such as Magnesium (**Mg**), Calcium (**Ca**), and the refractive index
-(**RI**) have slightly right-tailed distributions with noticeable observations
-below the mode. Still others, such as Silicon (**Si**), Sodium (**Na**), and
-Aluminum (**Al**) are borderline symmetrical. Lastly, Magnesium (**Mg**) doesn't
-fit into any category. Rather it has peaks at the ends and dips in the
-middle. Maybe this is a beta distribution, but it isn't clear at this point.
+(**RI**) have slightly right-tailed distributions. Still others, such as 
+Silicon (**Si**), Sodium (**Na**), and Aluminum (**Al**) are borderline 
+symmetrical. Lastly, Magnesium (**Mg**) doesn't fit into any category. 
+Rather it has peaks at the ends and dips in the middle. 
+Maybe this is a beta distribution, but it isn't clear at this point.
 **Type** doesn't have an immediately recognizable shape either, but as it is a
 categorical variable, so it's of little concern. We can check for skewness using
 the sample skew parameter.
@@ -112,11 +111,11 @@ glass_scale %>%
   facet_wrap(~key, scales = 'free')
 ```
 
-Unfortuately, this did not help matters much and the skew not at all, which
-stands to reason, as centering and scaling do not materially address skew.
+Unfortunately, this did not help matters much and the skew not at all, which
+stands to reason, as centering and scaling do not directly address skew.
 I find that scaling and centering are, in the real world, fairly useless. 
 They add another layer of complexity for non-technical people, and often do
-not address things like skew of distribution irregularities. 
+not address things like skew of distribution or irregularities. 
 
 #### Logarithmic Transformation
 
@@ -172,7 +171,7 @@ x^* =
 \end{cases}
 \]
 
-We have used this extensively already in class, so let's see if BoxCox can
+We have used this extensively already in class, so let's see if Box-Cox can
 be of use here. My guess is that it will only work for handful of elements.
 We will look at the lambda values first and determine where to go from there.
 
@@ -194,7 +193,7 @@ As such, we will pass on Box Cox.
 
 ### Variable Correlations
 
-To visually inspect correlation, the simplest approach is to create scatterplots
+To visually inspect correlation, the simplest approach is to create scatter plots
 of each variable against each other.
 
 ```{r, fig.width = 9L, fig.height = 8L, warning=FALSE, message=FALSE}
