@@ -1,0 +1,451 @@
+---
+title: "624 HW 5"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# Question HA 7.1
+
+Consider the `pigs` series -- the number of pigs slaughtered in Victoria each
+month.
+
+## Answers
+
+### Part a
+
+Use the `ses()` function in R to find the optimal values of alpha and l, and
+generate forecasts for the next four months.
+
+```{r, message=FALSE, warning=FALSE}
+library(fpp2)
+library(forecast)
+pigs_output = ses(pigs, h = 4)
+summary(pigs_output$model)
+```
+
+After running the `ses()` function on the `pigs` data, we can see that the
+optimal value for alpha is 0.2971 and the optimal value for l is 77260.0561.
+
+The forecast for the next four months is shown below:
+
+```{r}
+pigs_output
+```
+
+### Part b
+
+Compute a 95% prediction interval for the first forecast using predicted value
++/- 1.96 * s, where s is the standard deviation of the residuals. Compare your
+interval with the interval produced by R.
+
+```{r}
+pigs_sd_resid = sd(pigs_output$residuals)
+pigs_lb = pigs_output$mean - (1.96 * pigs_sd_resid)
+pigs_ub = pigs_output$mean + (1.96 * pigs_sd_resid)
+pigs_lb
+pigs_ub
+```
+
+The interval created does not get wider as time increases, whereas the
+interval produced by R gradually gets wider as time increases. Using the basic
+confidence interval calculation with a simple point forecast that does not
+adjust for increasing uncertainty as time increases creates this static
+rectangle forecast. The output from R appears to adjust for this uncertainty.
+
+# Question HA 7.5
+
+Data set books contains the daily sales of paperback and hardcover books at the same store. The task is to forecast the next four days’ sales for paperback and hardcover books.
+
+a) Plot the series and discuss the main features of the data.
+b) Use the ses() function to forecast each series, and plot the forecasts.
+c) Compute the RMSE values for the training data in each case.
+
+## Answers
+
+### part a
+
+```{r}
+autoplot(books) +
+  labs(title="Books dataset")
+```
+
+This is a daily time series of two types of books. They both appear to have positive trend though it could also be argued that there in no trend. I would not call this seasonal data even though there is a variation to the daily sales. 
+
+### part b
+
+```{r}
+sales_paper = ses(books[,'Paperback'], h = 7)
+autoplot(sales_paper) +
+  autolayer(fitted(sales_paper), series="Fitted Paperback") +
+  autolayer(books[,"Paperback"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+```
+
+
+```{r}
+sales_hard = ses(books[,'Hardcover'], h=7)
+autoplot(sales_hard) +
+  autolayer(fitted(sales_hard), series="Fitted Hardcover") +
+  autolayer(books[,"Hardcover"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+```
+
+Given these plots one could argue that for Hardcover books, there might be a trend and thereby worth exploring some other forecasting methods such as linear trend. For paperback books, there does not appear to be trend. 
+
+### part c
+
+```{r}
+paste("Paperbacks RMSE",
+round(accuracy(sales_paper),3)[2],
+"Hardcovers RMSE",
+round(accuracy(sales_hard),3)[2])
+```
+
+Each of the SES models had around 31-33 RMSE or about 15% of the average daily sales value in error. That is not a great result, but it is not horrible either. 
+
+
+# Question HA 7.6
+
+We will continue with the daily sales of paperback and hardcover books in data set books.
+
+a. Apply Holt’s linear method to the paperback and hardback series 
+and compute four-day forecasts in each case.
+
+b. Compare the RMSE measures of Holt’s method for the two series to 
+those of simple exponential smoothing in the previous question. 
+(Remember that Holt’s method is using one more parameter than SES.) 
+Discuss the merits of the two forecasting methods for these data sets.
+
+c. Compare the forecasts for the two series using both methods.
+Which do you think is best?
+
+d. Calculate a 95% prediction interval for the first forecast for each series,
+using the RMSE values and assuming normal errors. Compare your intervals with
+those produced using `ses` and `holt`.
+
+
+## Answers
+
+### part a
+
+```{r}
+h_paper<- holt(books[,"Paperback"], h=4)
+h_hard<- holt(books[,"Hardcover"], h=4)
+```
+
+### part b
+
+
+```{r}
+paste("Paperbacks RMSE",
+round(accuracy(h_paper),3)[2],
+"Hardcovers RMSE",
+round(accuracy(h_hard),3)[2])
+```
+
+For paperback sales we don't really see much difference between SES and Holt's. 
+There is a small decrease in RMSE, MASE, and MAE but the changes are on the order 
+of 2% overall from the daily average sales. Hardcovers see a noticeable improvement 
+with Holt's method for linear trend, which confirms insights from 7.5(b). There is 
+some kind of trend to hardcover books sales over this time interval, or at least a 
+more convincing one than paperbacks. It seems that for now SES works fine for paperbacks
+whereas Holt's would be a better option for hardcovers. 
+
+### part c
+
+First, let's look at Hardcovers and remind ourselves of the SES forecast in
+addition to the Holt's method.
+
+```{r}
+autoplot(sales_hard) +
+  autolayer(fitted(sales_hard), series="Fitted Hardcover") +
+  autolayer(books[,"Hardcover"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+
+autoplot(h_hard) +
+  autolayer(fitted(h_hard), series="Fitted Hardcover") +
+  autolayer(books[,"Hardcover"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+```
+
+Certainly, the confidence intervals are better and the forecast bands "look" appropriate
+for the Holt's method over the SES. Let's do the same for paperbacks. 
+
+```{r}
+autoplot(sales_paper) +
+  autolayer(fitted(sales_paper), series="Fitted Paperback") +
+  autolayer(books[,"Paperback"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+
+autoplot(h_paper) +
+  autolayer(fitted(h_paper), series="Fitted Paperback") +
+  autolayer(books[,"Paperback"], series="Original Data") +
+  ylab("Sales") + xlab("days")
+```
+
+Here the SES model's 80% CI captures almost all the original data, which is pretty good. 
+The Holt forecast is marginally better from reviewing the traiing set metrics, 
+but it's unclear if one is definitely better. For that reason, I'd probably stick with the 
+SES forecast for the paperback data. I would rather steer more cautiously than assuming
+linear trend. 
+
+### part d - Paperback
+
+The rudimentary method of calculating prediction intervals for the paperback forecast.
+
+```{r}
+h_paper_res = sd(h_paper$residuals)
+h_paper_lb = h_paper$mean - (1.96 * h_paper_res)
+h_paper_ub = h_paper$mean + (1.96 * h_paper_res)
+h_paper_lb
+h_paper_ub
+```
+
+```{r}
+h_paper
+sales_paper
+```
+
+For paperback sales the SES method is much wider for both the upper and lower bounds
+of the 95% PI as compared to the rudimentary method. The Holt's method 95% PI seems
+to also be bigger, but less than that of SES. 
+
+
+### part d - Hardcover
+
+```{r}
+h_hard_res = sd(h_hard$residuals)
+h_hard_lb = h_hard$mean - (1.96 * h_hard_res)
+h_hard_ub = h_hard$mean + (1.96 * h_hard_res)
+h_hard_lb
+h_hard_ub
+```
+
+```{r}
+h_hard
+sales_hard
+```
+Again we see that the SES method casts a wide net in PI compared to SES and Holt. 
+Furthermore, we see that Holt and classic CI computation are similar. 
+
+
+# Question HA 7.7
+
+For this exercise use data set eggs, the price of a dozen eggs 
+in the United States from 1900–1993. Experiment with the various options in the holt() 
+function to see how much the forecasts change with damped trend, 
+or with a Box-Cox transformation. Try to develop an intuition of 
+what each argument is doing to the forecasts.
+
+[Hint: use h=100 when calling holt() so you can clearly see the
+differences between the various options when plotting the forecasts.]
+
+Which model gives the best RMSE?
+
+## Answers
+
+For this we will operationalize this to some extent to produce various metrics
+and forecasts with different variations of `holt`. 
+
+First, let's look at the dataset `eggs`
+
+```{r}
+autoplot(eggs)
+```
+
+Wow. Not sure the description means when it says, "constant dollars", 
+but I'm guessing that has something to do with inflation. Seems like the 
+price has totally tanked over this time span. I guess when you mass produce
+eggs in inhumnae ways (like we do now) the cost has to plummet due to incredible
+supply. Being an egg farmer must be a brutal endeavor. 
+
+Let's also look at a BoxCox transform on this data. 
+
+```{r}
+lamb = BoxCox.lambda(eggs)
+autoplot(BoxCox(eggs, lamb)) + ylab("Box Cox")
+```
+
+Not impressive. Box Cox has dampened the data and reduced the scale, but has made the data appear more linear nor has it toned down the variation in a meaningful way. Skeptical to the value of using Box Cox for this data. 
+
+Back to the variations of holt. We will run several CV models for 
+comparison and pick the best based on RMSE.
+
+```{r}
+t1 <- tsCV(eggs, ses, h=100)
+t2 <- tsCV(eggs, holt, h=100)
+t3 <- tsCV(eggs, holt, damped=TRUE, h=100)
+t4 <- tsCV(eggs, holt, damped=TRUE, phi=.8, h=100)
+t5 <- tsCV(eggs, holt, damped=TRUE, phi=.85, h=100)
+t6 <- tsCV(eggs, holt, damped=TRUE, phi=.90, h=100)
+t7 <- tsCV(eggs, holt, damped=TRUE, phi=.95, h=100)
+model_list<- list(t1,t2,t3,t4,t5,t6,t7)
+result<-list()
+for (i in seq_len(7)){
+  result[[i]]<-paste0("RMSE for model ",i,
+         ": ",sqrt(mean(model_list[[i]]^2, 
+                        na.rm=TRUE)))
+}
+result
+```
+
+
+Now let's get an idea of what is happening with the Holt model vs. SES.
+
+```{r}
+fc_1<- ses(eggs, h=100)
+fc_2<- holt(eggs, h=100)
+fc_3<- holt(eggs,h=100, damped=TRUE, phi=.98)
+autoplot(eggs) +
+  autolayer(fc_1, series="SES",PI=FALSE) +
+  autolayer(fc_2, series="holt undamped",PI=FALSE) +
+  autolayer(fc_3, series="holt - phi = .98",PI=FALSE) +
+  ggtitle("SES and Holt forecast on eggs data")
+```
+
+For heavily damped Holt forecasts we see only a marginal deviation from the SES forecast.
+This is why the CV models 1, 4, and 5 had similarly low RMSE. Those models were, respectively, 
+SES, holt(phi=.8), and holt(phi=.85). This would mean that the top models were highly similar
+to the SES result in this case. The undamped model yields negative prices pretty quickly, which
+makes no sense and is probably why the RMSE is so high for those model types. 
+
+# Question HA 7.8
+
+Recall your retail time series data (from Exercise 3 in Section 2.10).
+
+a. Why is multiplicative seasonality necessary for this series?
+b. Apply Holt-Winters’ multiplicative method to the data. Experiment with making the trend damped.
+c. Compare the RMSE of the one-step forecasts from the two methods. Which do you prefer?
+d. Check that the residuals from the best method look like white noise.
+e. Now find the test set RMSE, while training the model to the end of 2010. Can you beat the seasonal naïve approach from Exercise 8 in Section 3.7?
+
+
+## Answers
+
+### part a
+
+Load up the retail data from each week. 
+
+```{r}
+library(httr)
+url <- "https://otexts.com/fpp2/extrafiles/retail.xlsx"
+GET(url, write_disk("retail.xlsx", overwrite=TRUE))
+retail<- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retail[, "A3349721R"], frequency = 12, start = c(1982, 1))
+```
+
+```{r}
+retail_train <- window(myts,end=c(2010,12))
+retail_test <- window(myts,start=2011)
+```
+
+
+```{r}
+autoplot(myts) +
+  ggtitle("Retail Data Autoplot")
+```
+
+Multiplicative is needed due to the fact that the seasonality is increasing a steady rate.
+
+### part b
+
+```{r}
+fit_1<- hw(myts,seasonal="multiplicative", h=24)
+fit_2 <- hw(myts,seasonal="multiplicative",
+            damped = TRUE, h=24)
+autoplot(myts) +
+  autolayer(fit_1,
+            series="HW Damped Multiplicative", 
+            PI=FALSE, alpha=.5) +
+  autolayer(fit_2, series="HW Multiplicative",
+            PI=FALSE, alpha=.5) +
+  xlab("Year") +
+  ylab("Some Sales") +
+  ggtitle("Retail Sales in Australia") +
+  guides(color=guide_legend(title="Forecast"))
+```
+
+We see the undamped Holt-Winter's method start to deviated from the forecast window. 
+Seems like the damped HW multiplicative does a better job for this dataset. 
+
+
+### part c
+
+```{r}
+paste("Undamped RMSE",
+round(accuracy(fit_1),3)[2],
+"Damped RMSE",
+round(accuracy(fit_2), 3)[2])
+```
+
+Indeed the RMSE of the damped model is slight better. The MASE is marginal though, 
+but the plots seem to be convincing that the damped model is best. 
+
+### part d
+
+
+```{r}
+checkresiduals(fit_2)
+```
+
+This is a mized bag of results on the residuals. The residuals have mean of zero and appear to be normally distributed. However, the ACF plot shows alternating correlations and the scatter plot does not have constant variance. Additionally, we have significant finding in the Ljung-Box test suggesting that the residuals are distinguishable from white noise. So we have a model that is not very biased, but also is not capturing all the forecastable information. 
+
+
+### part e
+
+```{r}
+fit_2 <- hw(retail_train,seasonal="multiplicative",
+            damped = TRUE)
+fit_snaive <- snaive(retail_train)
+
+paste("Holt's damped RMSE",
+round(accuracy(fit_2, retail_test),3)[2],
+"Seasonal Naive",
+round(accuracy(fit_snaive, retail_test),3)[2])
+
+```
+
+Much better than the seasonal naive approach, which makes a ton of sense considering
+that this data is clearly trended and the naive approach simply predicts the last value
+plus a seasonal effect. 
+
+
+# Question HA 7.9
+
+For the same retail data, try an STL decomposition applied to the Box-Cox transformed series, followed by ETS on the seasonally adjusted data. How does that compare with your best previous forecasts on the test set?
+
+## Answer
+
+```{r}
+fit_stl= stlf(retail_train)
+fit_ets = ets(seasadj(decompose(retail_train, "multiplicative"))) 
+
+autoplot(retail_train, series = "train set") +
+  autolayer(forecast(fit_stl, h = 24, PI=FALSE), series = "STL Forecast") +
+  autolayer(forecast(fit_ets, h = 24, PI=FALSE), series = "ETS Forecast") +
+  autolayer(retail_test, series = "test set")
+```
+
+```{r}
+paste('STL Method RMSE',
+round(accuracy(fit_stl, retail_test)[2],3),
+'ETS Method',
+round(fit_ets$mse^(0.5),3))
+```
+
+ETS is in line with the Holt-Winter's in terms of RMSE. The STL method is not as good,
+but STL is certainly better than the naive approach. 
+
+
+
+
+
+
+
+
+
+
