@@ -276,6 +276,7 @@ Back to the variations of holt. We will run several CV models for
 comparison and pick the best based on RMSE.
 
 ```{r}
+lambda=BoxCox.lambda(eggs)
 t1 <- tsCV(eggs, ses, h=100)
 t2 <- tsCV(eggs, holt, h=100)
 t3 <- tsCV(eggs, holt, damped=TRUE, h=100)
@@ -285,7 +286,7 @@ t6 <- tsCV(eggs, holt, damped=TRUE, phi=.90, h=100)
 t7 <- tsCV(eggs, holt, damped=TRUE, phi=.95, h=100)
 model_list<- list(t1,t2,t3,t4,t5,t6,t7)
 result<-list()
-for (i in seq_len(7)){
+for (i in seq_len(length(model_list))){
   result[[i]]<-paste0("RMSE for model ",i,
          ": ",sqrt(mean(model_list[[i]]^2, 
                         na.rm=TRUE)))
@@ -294,12 +295,14 @@ result
 ```
 
 
+
 Now let's get an idea of what is happening with the Holt model vs. SES.
 
 ```{r}
 fc_1<- ses(eggs, h=100)
 fc_2<- holt(eggs, h=100)
 fc_3<- holt(eggs,h=100, damped=TRUE, phi=.98)
+
 autoplot(eggs) +
   autolayer(fc_1, series="SES",PI=FALSE) +
   autolayer(fc_2, series="holt undamped",PI=FALSE) +
@@ -343,10 +346,11 @@ retail_train <- window(myts,end=c(2010,12))
 retail_test <- window(myts,start=2011)
 ```
 
+The original data
 
 ```{r}
 autoplot(myts) +
-  ggtitle("Retail Data Autoplot")
+  ggtitle("Original Retail Data Autoplot")
 ```
 
 Multiplicative is needed due to the fact that the seasonality is increasing a steady rate.
@@ -392,27 +396,26 @@ but the plots seem to be convincing that the damped model is best.
 checkresiduals(fit_2)
 ```
 
-This is a mized bag of results on the residuals. The residuals have mean of zero and appear to be normally distributed. However, the ACF plot shows alternating correlations and the scatter plot does not have constant variance. Additionally, we have significant finding in the Ljung-Box test suggesting that the residuals are distinguishable from white noise. So we have a model that is not very biased, but also is not capturing all the forecastable information. 
+This is a mixed bag of results on the residuals. The residuals have mean of zero and appear to be normally distributed. However, the ACF plot shows alternating correlations and the scatter plot does not have constant variance. Additionally, we have significant finding in the Ljung-Box test suggesting that the residuals are distinguishable from white noise. So we have a model that is not very biased, but also is not capturing all the forecastable information. This model could be improved. 
 
 
 ### part e
 
 ```{r}
-fit_2 <- hw(retail_train,seasonal="multiplicative",
+fit_3 <- hw(retail_train,seasonal="multiplicative",
             damped = TRUE)
 fit_snaive <- snaive(retail_train)
 
 paste("Holt's damped RMSE",
-round(accuracy(fit_2, retail_test),3)[2],
+round(accuracy(fit_3, retail_test),3)[2],
 "Seasonal Naive",
 round(accuracy(fit_snaive, retail_test),3)[2])
-
 ```
 
-Much better than the seasonal naive approach, which makes a ton of sense considering
-that this data is clearly trended and the naive approach simply predicts the last value
-plus a seasonal effect. 
-
+Both of these are significantly better than other models. This might be due to the fact that 
+the variance in becomes more constant and overall less in the latter third of the data. So 
+the weights for recency in the model more closely mirrors the test set. Seems more like luck
+than skill. 
 
 # Question HA 7.9
 
@@ -421,8 +424,15 @@ For the same retail data, try an STL decomposition applied to the Box-Cox transf
 ## Answer
 
 ```{r}
-fit_stl= stlf(retail_train)
-fit_ets = ets(seasadj(decompose(retail_train, "multiplicative"))) 
+lambda<- BoxCox.lambda(myts)
+bc_retail<- BoxCox(myts, lambda)
+retail_train <- window(bc_retail,end=c(2010,12))
+retail_test <- window(bc_retail,start=2011)
+
+fit_stl= stlf(retail_train,robust = TRUE, lambda = lambda)
+fit_ets = ets(seasadj(decompose(retail_train, "multiplicative")),
+              model = "ZZZ",
+              lambda = lambda) 
 
 autoplot(retail_train, series = "train set") +
   autolayer(forecast(fit_stl, h = 24, PI=FALSE), series = "STL Forecast") +
@@ -437,10 +447,10 @@ round(accuracy(fit_stl, retail_test)[2],3),
 round(fit_ets$mse^(0.5),3))
 ```
 
-ETS is in line with the Holt-Winter's in terms of RMSE. The STL method is not as good,
-but STL is certainly better than the naive approach. 
-
-
+ETS is way better than STL for this dataset, though it is hard to determine the relative 
+impact of this forecast for just a single, possibly lucky split. In progressively testing
+the various parameters of ETS we see that BoxCox is helpful in this context as is letting
+R choose the optimum model ("ZZZ").
 
 
 
