@@ -1,0 +1,762 @@
+---
+title: "Project 1 - 624"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo=FALSE}
+library(readxl)
+library(fpp2)
+library(tidyverse)
+library(lubridate)
+library(writexl)
+library(urca)
+```
+
+
+# ATM Cash Flow
+## Executive Summary
+
+Given the differences in the data for each ATM, each ATM is modeled and forecast separately.
+Attached are the forecasts of cash flow needs for each ATM. The predictions should be considered
+a starting point for modeling cash needs, as further testing and refined are needed. This 
+is especially true for ATM 3, which has insufficient data for a meaningful prediction. 
+
+
+## Load Data and Clean Up
+
+We will start by renaming the columns and pulling some trickery with the date to 
+match the time interval listed in the project description. 
+
+```{r}
+data <- read_excel('./data/ATM624Data.xlsx')
+data <- 
+  data %>%
+  mutate(DATE= as.Date(DATE, origin="1899-12-30")) %>%
+  rename(date=DATE, atm=ATM, cash=Cash)
+```
+
+Summarize the data looking for oddities. 
+
+```{r}
+summary(data)
+```
+
+NA's are present, so we should investigate. 
+
+```{r}
+unique(data$atm)
+```
+
+
+```{r}
+data %>%
+  filter(is.na(cash)) %>%
+  head()
+```
+
+We are missing some information regarding the ATM as well as both cash and ATM 
+values. Since cash flow is what we are trying to predict, we will need to drop
+those NA values. Also several of the dates are beyond the one year date interval
+from May 1, 2009 to May 1, 2010. 
+
+```{r}
+data<- drop_na(data)
+summary(data)
+```
+
+## Time Series Exploration
+
+Next we will need to explore the time series data. This will be a series of 
+plots to investigate the characteristics of the ATMs.
+
+```{r}
+data_ts <-
+  data %>%
+  group_by(atm) %>%
+  group_map(~ ts(.x$cash, start=c(2009, 05, 01), frequency=7))
+
+str(data_ts)
+```
+
+ATM 3 looks weird. 
+
+```{r}
+for (i in data_ts){
+  print(autoplot(i))
+}
+```
+
+ATM 3 _is_ weird. Seems like it was newly installed or fixed at the end of the time series.
+ATMs 1 and 2 appear to be standard TS data and ATM 4 has a serious outlier. We will need to take care of that outlier in some way to not skew the prediction. This is especially important
+due to the fact that the outlier is fairly close to the end of the time series, and that
+will have higher weight towards the future predictions. 
+
+### Outlier Remediation
+
+Since that appears to be only one outlier in the ATM 4 data. We will take the easy 
+way to fix it using the forecast package. Hyndman gives a very concise description of 
+this method on [stack exchange](https://stats.stackexchange.com/questions/69874/how-to-correct-outliers-once-detected-for-time-series-data-forecasting). Hilariously, his answer is **not** the most up-voted nor is it the "checked as correct" answer. How dare they. 
+
+
+```{r}
+data_ts[[4]] <- tsclean(data_ts[[4]])
+autoplot(data_ts[[4]])
+```
+
+### Seasonality
+
+It seems reasonable to consider these data sets seasonal, but we will confirm via subseries
+plot
+
+```{r}
+for (i in data_ts){
+  print(ggsubseriesplot(i))
+}
+```
+
+Each of these data sets have a seasonality to them in terms of days of the week in which 
+money is drawn out. ATMs 1 and 2 have low use on sunday and/or Monday, ATM 3 is only used mid-week, and ATM 4 gets consistent use except on Wednesday. 
+
+### Transformation and Differencing
+
+ATM 3 has too little information to make much of a choice about tranformation, but ATM 1, 2, qnd 4 appear to be stationary though they have pretty large variance. We have tried several 
+transformations (Box-Cox, log, etc) and landed on Box-Cox as a good choice for this data. 
+
+```{r, warning=FALSE}
+data_ts[[1]]<- 
+    data_ts[[1]] %>%
+    BoxCox(., lambda = BoxCox.lambda(data_ts[[1]]))
+data_ts[[2]]<- 
+    data_ts[[2]] %>%
+    BoxCox(., lambda = BoxCox.lambda(data_ts[[2]]))
+data_ts[[3]]<- data_ts[[3]]
+data_ts[[4]]<- 
+    data_ts[[4]] %>%
+    BoxCox(., lambda = BoxCox.lambda(data_ts[[4]]))
+```
+
+Differencing does not seem to be needed given the appearance of the data. Though a call 
+to the `ndiffs` function suggests that a KPSS test says otherwise for ATM 2. For ATM 1, the results of the KPSS test marginally side with no differencing. However after viewing the ACF ad PACF plots, it seems reasonable to first difference ATM 1 as well. 
+
+```{r}
+data_ts[[2]] %>% ndiffs()
+```
+
+```{r}
+ur.kpss(data_ts[[2]])
+```
+
+We will difference the data for ATM 1 and 2 only. 
+
+## Modeling
+
+We will forecast each ATM series separately as stated above. 
+
+### ATM 1 
+
+We have determined that ATM 1 and 2 might need differencing and have been transformed
+using BoxCox. We will determine some parameters on the AR and MA components of the 
+time series. 
+
+```{r}
+ggtsdisplay(data_ts[[1]] %>%
+              diff())
+```
+
+This looks like MA is order two and AR is order six. MA order two is due to the ACF dropping out after two lag values and the AR of order 6 is due to the PACF dropout at lag 6. We will also run a large breathe of auto arima because this type of modeling involves a fair amount of guesswork. 
+
+Seasonal differencing should also be considered we see strong ACF peaks on multiples of 7
+lag values and decreasing PACF peaks. This is covered in the text as a possible seasonal
+(0,1,1) due to the presence of the MA term. 
+
+```{r}
+tsdisplay(data_ts[[1]])
+```
+
+
+```{r}
+manual_fit <- arima(data_ts[[1]], order=c(6,1,2), seasonal = c(0,1,1))
+summary(manual_fit)
+```
+
+And we will check the residuals. 
+
+```{r}
+checkresiduals(manual_fit)
+```
+
+This appears to be a solid result in terms of residuals. They are centered at zero, appear to be normal, no significant ACF lags. The residual plot seems like it might have some variance 
+issues, but these aren't too much if a concern given the other points. Also the Ljung-Box test
+the residals are just noise. 
+
+Next we will try a full-space auto arima to see if we are way off base on this analysis. 
+
+```{r}
+auto_fit<- auto.arima(data_ts[[1]],
+                        seasonal = TRUE, 
+                        stepwise = FALSE, 
+                        approximation = FALSE)
+summary(auto_fit)
+```
+
+```{r}
+checkresiduals(auto_fit)
+```
+
+Well, we were not way off in terms of choosing a model when compared to the auto arima search.
+Theh auto arima is simpler - a difference of 10 in AIC is significant - and the fewer the terms the better, generally. 
+
+
+For the reasons above, we will keep the auto arima model. 
+
+### ATM 2
+
+```{r}
+ggtsdisplay(data_ts[[2]] %>%
+              diff())
+```
+
+We have a similar result as ATM 1. We have seasonal differencing that is needed (strong peaks on 7 multiples) and PACF drops out at lag six. The last strong ACF peak is at lag 5 (omitting the 7s). So MA = 6 and AR = 5 with d=1. 
+
+```{r}
+manual_fit_2 <- arima(data_ts[[2]], order=c(6,1,5), seasonal = c(0,1,1))
+summary(manual_fit_2)
+```
+
+Checking residuals
+
+```{r}
+checkresiduals(manual_fit_2)
+```
+
+Pretty good, though the residual plot shows some non-constant variance and the ACF has one significant peak at lag 23. 
+
+Now the auto fit. The auto fit model does not pass the Ljung-Box test and provides worse 
+RMSE results (though only marginally worse). The AIC for the manual fit is also minorly 
+better. We will stick with the manual fit in this case. 
+
+```{r}
+auto_fit_2 <- auto.arima(data_ts[[2]],
+                         stepwise = FALSE, 
+                         approximation = FALSE, 
+                         seasonal = TRUE)
+summary(auto_fit_2)
+```
+
+```{r}
+checkresiduals(auto_fit_2)
+```
+
+### ATM 3
+
+ATM 3 has very very few points, so it makes sense to simply predict using a simple, 
+low-stakes method.
+
+
+```{r}
+fit_3<- arima(data_ts[[3]][363:365], order=c(0,0,0))
+summary(fit_3)
+```
+
+
+### ATM 4
+
+Other than a strong seasonal component, there does not appear to be much here. Maybe an auto-regressive term from the presistance of the PACF peaks when compared to ACF. 
+
+```{r}
+tsdisplay(data_ts[[4]])
+```
+
+
+```{r}
+manual_fit_4<- arima(data_ts[[4]],
+                     order= c(1,0,0), 
+                     seasonal = c(0,1,1))
+summary(manual_fit_4)
+```
+
+```{r}
+checkresiduals(manual_fit_4)
+```
+
+Seems like a reasonable model. A broad search of the space is probably the best choice though. 
+
+```{r}
+auto_fit_4 <- auto.arima(data_ts[[4]],
+                         stepwise = FALSE,
+                         approximation = FALSE,
+                         seasonal = TRUE)
+summary(auto_fit_4)
+
+```
+
+
+```{r}
+checkresiduals(auto_fit_4)
+```
+
+
+This is not a better choice than the manual fit. We will keep the manually adjusted model. 
+
+## Forecasting
+
+We have out four models, so let's now predict the next month worth of cash needs. 
+
+```{r}
+auto_fit %>% forecast(h=30) %>% autoplot()
+manual_fit_2 %>% forecast(h=30) %>% autoplot()
+fit_3 %>% forecast(h=30) %>% autoplot()
+manual_fit_4 %>% forecast(h=30) %>% autoplot()
+```
+
+These all appear to have reasonable results, and the 80% PI covers a wide enough span of the data that it doesn't look like this prediction will result in empty machines. That is, a relative surge in demand will not (likely) cause a the ATMs to run out of money. 
+
+## How Much Money?
+
+So how much should we put in those machines? Given the state of the models and the time interval used, we should air on the side of caution without better knowing cash demands
+around summer travel, holidays, crypto price run ups, stimulus checks, etc. 
+
+```{r warning=FALSE, message=FALSE}
+atm1<-as.integer(InvBoxCox(forecast(auto_fit, h=10)$mean, 
+                lambda = attr(data_ts[[1]],'lambda')))
+atm2<- as.integer(InvBoxCox(forecast(manual_fit_2, h=10)$mean,
+                 lambda = attr(data_ts[[2]], 'lambda')))
+atm3<- as.integer(forecast(fit_3, h=10)$mean)
+atm4<- as.integer(InvBoxCox(forecast(manual_fit_4, h=10)$mean,
+                 lambda = attr(data_ts[[4]],'lambda')))
+atm_df<- 
+  bind_cols(atm1, atm2, atm3, atm4) %>%
+  rename(ATM_1='...1', ATM_2='...2',
+         ATM_3='...3', ATM_4='...4') %>%
+  mutate(day=1:10)
+```
+
+```{r}
+atm_df %>% head(7)
+```
+
+```{r}
+writexl::write_xlsx(atm_df, "atm_forcast.xlsx")
+```
+
+
+# Residential Power Usage
+## Executive Summary
+
+An Auto-Arima model provides a nice forecast for the following year of electrical load for
+the area. Given the relative consistency of the data, we have reasonable prediction for mean 
+electric load. 
+
+## Data Load and Clean Up
+
+```{r}
+data_power<- read_excel("./data/ResidentialCustomerForecastLoad-624.xlsx")
+data_power<- 
+  data_power %>%
+  rename(date='YYYY-MMM', case_seq=CaseSequence, kwh=KWH)
+head(data_power)
+```
+
+This time format seems to puzzle R. I found this [SO](https://stackoverflow.com/questions/19062178/how-to-convert-specific-time-format-to-timestamp-in-r) post about string manipulation and dates, which lead me to assigning an arbitrary 
+day for each month. This made it easier for R to understand as a date. I chose the 15 of each month for no meaningful reason. 
+
+```{r}
+data_power<-
+  data_power %>%
+  mutate(date=as.Date(paste(date,"15",sep="-"), format="%Y-%b-%d")) %>%
+  select(date, kwh)
+
+summary(data_power)
+```
+
+One NA in the power data. We are going to deal with this later or maybe ignore it.
+It is likely to not have a meaningful impact. 
+
+```{r}
+power_ts <- ts(data_power$kwh, frequency = 12, start = c(1998,1))
+```
+
+### Time Series Exploration
+
+```{r}
+power_ts %>% 
+  autoplot() +
+  ggtitle("Residential Power Consumption")
+```
+
+Big drop in early 2010. Perhaps a squirrel met it's maker. Again, we will take the easy way out for a single outlier. 
+
+```{r}
+power_ts <- tsclean(power_ts)
+autoplot(power_ts)
+```
+
+That took care of the outlier and the NA values.
+
+
+```{r}
+ggsubseriesplot(power_ts) + ggtitle("Subseries Residential Power")
+```
+
+Definitely have strong seasonality and a reasonable indication of trended data. 
+
+```{r}
+ggseasonplot(power_ts)
+```
+
+This seems like less of a clear upward trend and more like a cycle to the year-over-year
+power demand. Let us take aquick look at a decomposition.
+
+```{r warning=FALSE, message=FALSE}
+library(seasonal)
+power_ts %>% 
+  seas(x11="") %>%
+  autoplot()
+```
+
+So this is a trend, but seems to have some uncertainty in how the electrical demand is 
+rising. 
+
+### Transformation and Differencing
+
+The log transform and Box-Cox are indistinguishable and both do a reasonable job of reducing scale, we will go with log.
+
+```{r}
+power_ts %>%
+  log10(.) %>%
+  autoplot() +
+  ggtitle("Log Transform of Power Data")
+
+log_power<- log10(power_ts)
+```
+
+```{r}
+log_power %>% 
+  diff() %>% 
+  autoplot() +
+  ggtitle("First Differnce of Log Transformed Data")
+```
+
+Stabilized with the first difference. A call to `ndiffs` yields the same result, d=1.
+
+```{r}
+tsdisplay(diff(log_power))
+```
+
+The strong bi-annual seasonality is hard to see past in the ACF, but at least one MA term would be a good choice. The PACF suggests a couple of AR terms as well. Perhaps a (1,1,2). Seasonality has at least second order MA. 
+
+### Modeling
+
+As above, we will fit our best guess and run a wide berth of auto arimas to cast a big net. 
+We can sort the results from there. 
+
+```{r}
+fit_power<- arima(log_power, order=c(1,1,2), seasonal = c(0,1,2))
+summary(fit_power)
+```
+
+```{r}
+auto_fit_power<- auto.arima(log_power, 
+                            stepwise = FALSE,
+                            approximation = FALSE,
+                            seasonal = TRUE)
+```
+
+```{r}
+summary(auto_fit_power)
+```
+
+These are quite different models, with very similar results. A change in 10 AIC is meaningful
+for simplicity and overfit. The difference in RMSE is marginal at best. We will go with the 
+auto arima. Both residuals looked great, so this is just a matter of picking based on metrics
+only. 
+
+```{r}
+checkresiduals(auto_fit_power)
+```
+
+
+
+### Forcasting
+
+We want a one year forecast.
+
+```{r}
+fc_power<- 
+  auto_fit_power %>%
+  forecast(h=12)
+autoplot(fc_power)
+```
+
+Looks good, even the 80 and 90% PIs seem tight and well-bounded. 
+
+### How Much Demand?
+
+For practical interpertation, the model predicts the following year of millions of KWH.
+
+```{r}
+kwh_pred<- 10^(fc_power$mean) / 1000000
+kwh_pred
+```
+
+
+
+
+```{r}
+kwh_pred<-data.frame(kwh_pred)
+writexl::write_xlsx(kwh_pred, "power_forcast.xlsx")
+```
+
+
+# Water Flow Pipes
+## Executive Summary
+
+The best for these two pipes as aggregated is a simple prediction of the mean value. Pipe one is missing
+significant amounts of data, but a forecast could be made. More data from that pipe would be helpful. 
+
+
+## Data Load and Clean Up
+
+This was way easier to clean up and aggregate than the power usage data set. I guess it's all 
+about what you already know.
+
+```{r message=FALSE, warning=FALSE}
+data_pipe_1<- 
+  read_excel("./data/Waterflow_Pipe1.xlsx",
+            col_types = c('date', 'numeric'),
+            col_names = c("datetime", "water_flow")) %>%
+  na.omit() # read_excel and name/type function add one extra NA row
+data_pipe_2<-
+  read_excel("./data/Waterflow_Pipe2.xlsx",
+            col_types=c('date', 'numeric'),
+            col_names = c("datetime", "water_flow")) %>%
+  na.omit()
+```
+
+
+```{r message=FALSE, warning=FALSE}
+data_pipe_1<- 
+  data_pipe_1 %>%
+  mutate(date = format(datetime,
+                       format = "%Y-%m-%d:%H")) %>%
+  group_by(date) %>%
+  summarize(average_flow = mean(water_flow))
+
+data_pipe_2<-
+  data_pipe_2 %>%
+  mutate(date= format(datetime,
+                       format = "%Y-%m-%d:%H")) %>%
+  group_by(date) %>%
+  summarize(average_flow = mean(water_flow))
+```
+
+```{r}
+data_pipe<-
+  data_pipe_1 %>%
+  full_join(data_pipe_2,
+            by = "date",
+            suffix = c("_1", "_2")) 
+```
+
+```{r}
+summary(data_pipe)
+```
+
+Now we have the flow across each pipe aggregated to the hour and matched in time we see that 
+the first pipe has far less measurements than the second pipe. Seems like pipe one is measured in
+an auxiliary fashion or is defective, whereas pipe two is consistently reading flow rate on every
+hour. They are normally distributed, which is good and it seems like pipe 1 is missing most of the days and hours worth of data and is roughly half the flow measurement of pipe 2. As such, we will 
+add the total flow of both pipes and model all three scenarios and see what happens. 
+
+```{r warning=FALSE, message=FALSE}
+data_pipe %>%
+  ggplot(aes(average_flow_1)) +
+  geom_histogram() +
+  labs(title="Average Flow Pipe 1")
+data_pipe %>%
+  ggplot(aes(average_flow_2)) +
+  geom_histogram() +
+  labs(title="Average Flow Pipe 2")
+```
+
+Final clean up and convert to time series object
+
+```{r}
+# replace NA with zero for total flow values. 
+data_pipe<-
+  data_pipe %>%
+  mutate(average_flow_1 = replace_na(average_flow_1,0),
+         average_flow_2 = replace_na(average_flow_2,0),
+         total_flow = average_flow_1+average_flow_2)
+```
+
+We will keep all three and model them separately and evaluate.
+
+```{r}
+pipe_1_ts <- ts(data_pipe$average_flow_1,
+                start = c(2015,10,23,00),
+                frequency = 24)
+pipe_2_ts <- ts(data_pipe$average_flow_2, 
+                start = c(2015,10,23,00), 
+                frequency = 24)
+pipe_t_ts <- ts(data_pipe$total_flow, 
+                start = c(2015,10,23,00),
+                frequency = 24)
+```
+
+## Flow Exploration
+
+```{r}
+pipe_1_ts %>%
+  autoplot() +
+  ggtitle("Pipe 1")
+pipe_2_ts %>%
+  autoplot() +
+  ggtitle("Pipe 2")
+pipe_t_ts %>%
+  autoplot() +
+  ggtitle("Total Flow")
+```
+
+### seasonality
+
+There is not convincing evidence that there is a hourly "seasonality" to this data. There are slight
+increases and decreases in this data, but they are marginal. 
+
+```{r}
+ggsubseriesplot(pipe_t_ts)
+```
+
+
+## Transformation and Differencing
+
+Box Cox showed no meaningful gain in terms of reduced variance or linearity. 
+The first difference was returned by `ndiffs` for both pipe 1 and the total
+flow. 
+
+```{r}
+pipe_t_ts %>% ndiffs()
+```
+
+
+```{r}
+ur.kpss(pipe_2_ts)
+```
+
+So pipe two seems to be stationary and pipe one and the total flow could use a first difference. 
+
+```{r}
+pipe_t_ts %>%
+  diff() %>%
+  autoplot() +
+  ggtitle("First Difference of Total Flow")
+```
+
+## Modeling
+### pipe 1
+```{r}
+pipe_1_ts %>%
+  diff() %>%
+  tsdisplay()
+```
+
+This will likely need both MA and AR terms. 
+
+### pipe 2
+
+```{r}
+pipe_2_ts %>%
+  tsdisplay()
+```
+
+This might actaully have a day-over-day seasonality to it. The first difference of this data 
+looks pretty good in terms of having reasonable patterns for MA and AR. The non-differenced 
+data seems less clear. 
+
+```{r}
+pipe_2_ts %>%
+  diff() %>%
+  tsdisplay()
+```
+
+### Total Flow
+
+```{r}
+pipe_t_ts %>%
+  diff() %>%
+  tsdisplay()
+```
+This is pipe 2, which should make sense. 
+
+### Modeling Results
+
+After looking at the data it seems like the best path forward would be to model pipe 1 and pipe two separately.
+The total flow is really just pipe two anyway. For both of these, we will use the auto arima and set it 
+to long search. For pipe one, we will truncate the values to ignore the long tail of zeros after index number
+236. 
+
+```{r}
+pipe_1_fit <- auto.arima(pipe_1_ts[1:236], 
+                         stepwise = FALSE,
+                         approximation = FALSE,
+                         seasonal= TRUE)
+summary(pipe_1_fit)
+```
+
+```{r}
+pipe_2_fit <- auto.arima(pipe_2_ts, 
+                         stepwise = FALSE,
+                         approximation = FALSE,
+                         seasonal= FALSE)
+summary(pipe_2_fit)
+```
+
+We tried several models including forcing a first difference and seasonality and the
+above simple (0,0,0) models were the best.
+
+```{r}
+checkresiduals(pipe_1_fit)
+```
+
+```{r}
+checkresiduals(pipe_2_fit)
+```
+
+The residuals for both models are white noise. There are some concerning ACF peaks for model two, but given the 
+normal-ness of histogram, we can conclude that the residuals are within what is acceptable. 
+
+
+## Forecasting
+
+One week forecast is 168 hours. These models are simply predicting the mean value. 
+
+```{r}
+pipe_1_fit %>%
+  forecast(h=168) %>%
+  autoplot()
+```
+
+```{r}
+pipe_2_fit %>%
+  forecast(h=168) %>%
+  autoplot()
+```
+
+```{r warning=FALSE, message=FALSE}
+pipe_1_pred<- pipe_1_fit %>% forecast(h=168)
+pipe_2_pred<- pipe_2_fit %>% forecast(h=168)
+pred_df<- bind_cols(pipe_1_pred$mean, pipe_2_pred$mean) %>%
+          rename(pipe_1='...1', pipe_2='...2') %>%
+          mutate(hour=1:168)
+head(pred_df)
+```
+
+```{r}
+writexl::write_xlsx(pred_df, "pipes_forcast.xlsx")
+```
+
