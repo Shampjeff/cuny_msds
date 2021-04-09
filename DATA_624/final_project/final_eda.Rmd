@@ -78,20 +78,20 @@ Seems like maybe give it outlier reduction by 3/4 standard deviation for the nor
 
 ```{r}
 data %>% 
-  pivot_longer(c(`Air Pressurer`, MFR, `Filler Speed`,
+  pivot_longer( c(`Air Pressurer`, MFR, `Filler Speed`,
                 `Oxygen Filler`, `Pressure Vacuum`, Temperature)) %>%
-  ggplot(aes(x=name, y=value)) +
+  ggplot(aes(x=name, y=value,fill=`Brand Code`)) +
   geom_boxplot() 
 
 data %>% 
   pivot_longer(c(`Air Pressurer`, 
                 `Oxygen Filler`, `Pressure Vacuum`, Temperature)) %>%
-  ggplot(aes(x=name, y=value)) +
+  ggplot(aes(x=name, y=value, fill=`Brand Code`)) +
   geom_boxplot() 
 
 data %>% 
   pivot_longer(c( MFR, `Filler Speed`)) %>%
-  ggplot(aes(x=name, y=value)) +
+  ggplot(aes(x=name, y=value, fill=`Brand Code`)) +
   geom_boxplot()
 ```
 
@@ -101,7 +101,7 @@ data %>%
   pivot_longer(!Type,
                names_to = "key", 
                values_to = "value") %>%
-  ggplot(aes(value)) +
+  ggplot(aes(value, fill=Type)) +
   geom_histogram() +
   facet_wrap(~key, scales = 'free')
 
@@ -115,7 +115,7 @@ data %>%
   arrange(desc(skewness))
 ```
 
-Some Bi-modal, mostly normal. 
+Some Bi-modal, mostly normal. Brand code is meaningful. At least in 2 brand code pairs. 
 
 
 ```{r message=FALSE, warning=FALSE}
@@ -140,19 +140,6 @@ x %>%
 ```
 
 nothing looks amazing. 
-
-
-```{r}
-data %>%
-  pivot_longer(!`Brand Code`,
-               names_to = "key",
-               values_to = "value") %>%
-  ggplot(aes(x=value, fill=`Brand Code`)) +
-  geom_histogram() +
-  facet_wrap(~key, scales = 'free')
-```
-
-Brand code is meaningful. At least in 2 brand code pairs. 
 
 
 
