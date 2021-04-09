@@ -1,0 +1,150 @@
+---
+title: "Intitial 624 Final Project Work"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Data Load - Target Distribution
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(moments)
+library(readxl)
+```
+
+```{r}
+data <- read_excel('StudentData.xlsx')
+head(data)
+```
+
+```{r}
+data %>%
+  ggplot(aes(x=PH)) +
+  geom_histogram(binwidth = .01)
+```
+
+
+## Missing Values and Outliers
+
+```{r}
+pct_null <- data.frame(do.call("rbind", map(data,
+                                            ~ mean(is.na(.)))))
+colnames(pct_null) <- c('PCT_NULL')
+totalNulls <- pct_null %>%
+  mutate(VARIABLE = rownames(.)) %>%
+  arrange(desc(PCT_NULL)) %>%
+  filter(PCT_NULL > 0) %>%
+  dplyr::select(VARIABLE, PCT_NULL)
+ggplot(totalNulls, aes(x = reorder(VARIABLE, PCT_NULL), y = PCT_NULL,
+                       label = round(PCT_NULL, 2))) + 
+  geom_text(vjust = 0.5, hjust = -0.05)+
+  geom_bar(stat = "identity") +
+  ggtitle("Variables with Missing Information") +
+  xlab("Statistic") + ylab("Percent Missing") + 
+  coord_flip() + expand_limits(y = 1)
+```
+not much, MICE it.
+
+```{r}
+totalOutliers <- data.frame(
+  sapply(data %>% select(-PH,-`Brand Code`), 
+       function(x){length(boxplot.stats(x)$out)/nrow(data)}))
+totalOutliers$VARIABLE_NM <- rownames(totalOutliers)
+colnames(totalOutliers) <- c('PCT_OUTLIERS', 'VARIABLE_NM')
+ggplot(totalOutliers,
+       aes(x = reorder(VARIABLE_NM, PCT_OUTLIERS), y=PCT_OUTLIERS,
+           label = round(PCT_OUTLIERS, 3))) + 
+  geom_text(vjust = 0.5, hjust = -0.05)+ geom_bar(stat = "identity") +
+  ggtitle("Percentage of Outliers") + xlab("Statistic") +
+  ylab("Percent of Data that is an Outlier") + coord_flip() +
+  expand_limits(y = 0.15)
+```
+
+Seems like maybe give it outlier reduction by 3/4 standard deviation for the normal data and possible get creative for the bi-modal. See more below.
+
+```{r}
+data %>% 
+  pivot_longer(c(`Air Pressurer`, MFR, `Filler Speed`,
+                `Oxygen Filler`, `Pressure Vacuum`, Temperature)) %>%
+  ggplot(aes(x=name, y=value)) +
+  geom_boxplot() 
+
+data %>% 
+  pivot_longer(c(`Air Pressurer`, 
+                `Oxygen Filler`, `Pressure Vacuum`, Temperature)) %>%
+  ggplot(aes(x=name, y=value)) +
+  geom_boxplot() 
+
+data %>% 
+  pivot_longer(c( MFR, `Filler Speed`)) %>%
+  ggplot(aes(x=name, y=value)) +
+  geom_boxplot()
+```
+
+```{r message=FALSE, warning=FALSE}
+data %>%
+  rename(Type = `Brand Code`) %>%
+  pivot_longer(!Type,
+               names_to = "key", 
+               values_to = "value") %>%
+  ggplot(aes(value)) +
+  geom_histogram() +
+  facet_wrap(~key, scales = 'free')
+
+data %>%
+  rename(Type = `Brand Code`) %>%
+  pivot_longer(!Type,
+               names_to = "key",
+               values_to = "value") %>%
+  group_by(key) %>%
+  summarise(skewness = skewness(value)) %>%
+  arrange(desc(skewness))
+```
+
+Some Bi-modal, mostly normal. 
+
+
+```{r message=FALSE, warning=FALSE}
+library(corrr)
+x<-
+  data %>%
+  select(!`Brand Code`) %>%
+  correlate() %>% 
+  focus(PH)
+
+x %>% 
+  mutate(term = factor(term, 
+                       levels = term[order(PH)])) %>%
+  ggplot(aes(x = term, y = PH)) +
+    geom_bar(stat = "identity") +
+    ylab("Correlation with Ph") +
+    xlab("Variable") +
+    labs(title="Ph correlation with other variables") +
+    theme(axis.text.x = element_text(angle = 45,
+                                     vjust = 0.5,
+                                     hjust=1))
+```
+
+nothing looks amazing. 
+
+
+```{r}
+data %>%
+  pivot_longer(!`Brand Code`,
+               names_to = "key",
+               values_to = "value") %>%
+  ggplot(aes(x=value, fill=`Brand Code`)) +
+  geom_histogram() +
+  facet_wrap(~key, scales = 'free')
+```
+
+Brand code is meaningful. At least in 2 brand code pairs. 
+
+
+
+
+
