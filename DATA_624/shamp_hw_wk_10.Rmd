@@ -1,0 +1,310 @@
+---
+title: "HW Week 10 - 624"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+# Week 10 HW - Data 624
+## KJ 6.2
+
+Developing a model to predict permeability (see Sect. 1.4) could save significant resources for a pharmaceutical company, while at the same time more rapidly identifying molecules that have a sufficient permeability to become a drug:
+
+### Part A
+
+```{r message=FALSE, warning=FALSE}
+library(AppliedPredictiveModeling)
+data(permeability)
+```
+
+
+```{r}
+data("permeability")
+
+fp <- fingerprints
+pm <- permeability
+
+dim(fp)
+dim(pm)
+```
+
+Fingerprints dataset have 165 rows and 1107 columns, whereas the permeability dataset is just one variable, the permeability value. 
+
+
+### Part B
+
+```{r warning=FALSE, message=FALSE}
+library(caret)
+nz <- nearZeroVar(fp)
+fp <- fingerprints[,-nz]
+
+print(paste(nrow(fp), ncol(fp)))
+```
+
+Big drop in the number of columns as a result of the `nearZeroVar` funciton. We have now only 388. 
+
+
+### PART C
+
+I hope that Max Kuhn updates this textbook with the new tidymodels framework. Do these data partitions in caret is not as elegant. We will do the cross validation for the PLS and plot the RMSE aggregated from the cross validation. 
+
+```{r}
+set.seed(9450)
+
+trainingRows <- createDataPartition(pm, p=0.8, list=FALSE)
+
+train_X <- fp[trainingRows,]
+train_y <- pm[trainingRows]
+
+test_X <- fp[-trainingRows,]
+test_y <- pm[-trainingRows]
+
+trainingData <- as.data.frame(train_X)
+trainingData$Perm <- train_y
+
+ctrl <- trainControl(method='cv', number=10)
+pls_tune <- train(train_X, train_y,
+                 method="pls",
+                 tuneLength=20,
+                 trControl = ctrl)
+
+plot(pls_tune)
+```
+
+Looks like 7 components is the minimum. 
+
+```{r}
+num_comp <- which.min(pls_tune$results[,2])
+num_comp
+```
+
+yup. 
+
+
+```{r}
+pls_rmse <- pls_tune$results[num_comp,3]
+pls_rmse
+```
+
+
+### Part E
+
+Predict the response for the test set. What is the test set estimate of $R^{2}$?
+
+
+```{r}
+pls_fit <- pls::plsr(Perm ~., data=trainingData, ncomp=num_comp)
+
+pls_pred <- predict(pls_fit, test_X, ncomp=num_comp)
+
+pls_data <- data.frame(obs = test_y, pred=pls_pred)
+colnames(pls_data) = c('obs', 'pred')
+
+defaultSummary(pls_data)
+```
+
+Not amazing for something that is a more traditional science, $R^{2} = 0.501$ leaves us wanting. 
+
+
+### Part E
+
+Try building other models discussed in this chapter. Do any have better predictive performance?
+
+
+We will start with a ridge model. 
+
+```{r warning=FALSE, message=FALSE}
+# SLOW - only run if necessary!
+set.seed(9450)
+
+ridge_grid <- data.frame(.lambda=seq(0, 0.2, length=21))
+
+ctrl <- trainControl(method='cv', number=10)
+
+ridge_fit <- train(train_X, 
+                   train_y,
+                   method="ridge", 
+                   tuneGrid = ridge_grid,
+                   trControl = ctrl)
+ridge_fit
+```
+
+This better be worth the time it took. 
+
+```{r}
+ridge_pred <- predict(ridge_fit, newdata=test_X)
+
+ridge_data <- data.frame(obs = test_y, pred=ridge_pred)
+colnames(ridge_data) = c('obs', 'pred')
+defaultSummary(ridge_data)
+```
+
+That's a little better! I'll take any imporvement over only being able to explain half the variance in the data. 
+
+Now for ElasticNet 
+
+```{r}
+set.seed(9450)
+
+enet_grid <- expand.grid(.lambda=c(0, 0.01, 0.1),
+                        .fraction=seq(0.05, 1, length = 20))
+
+ctrl <- trainControl(method='cv', number=10)
+
+enet_tune <- train(train_X, train_y,
+                     method="enet", 
+                     tuneGrid = enet_grid,
+                     trControl = ctrl)
+
+
+plot(enet_tune)
+
+
+enet_pred <- predict(enet_tune, newdata=test_X)
+
+enet_data <- data.frame(obs = test_y, pred=enet_pred)
+colnames(enet_data) = c('obs', 'pred')
+defaultSummary(enet_data)
+```
+
+Looks like the ridge and ElasticNet models were the best, but they still are not great. If it's all we have, then we should try to use it while not canceling ongoing experiments. 
+
+
+## KJ 6.3
+
+A chemical manufacturing process for a pharmaceutical product was discussed in Sect. 1.4. In this problem, the objective is to understand the relationship between biological measurements of the raw materials (predictors), measurements of the manufacturing process (predictors), and the response of product yield. Biological predictors cannot be changed but can be used to assess the quality of the raw material before processing. On the other hand, manufacturing process predictors can be changed in the manufacturing process. Improving product yield by 1% will boost revenue by approximately one hundred thousand dollars per batch:
+
+
+### Part A
+
+```{r}
+data("ChemicalManufacturingProcess")
+
+cmp <- as.data.frame(ChemicalManufacturingProcess)
+
+x_raw <- cmp[,2:58]
+y_raw <- as.matrix(cmp$Yield)
+
+dim(x_raw)
+dim(y_raw)
+```
+
+Similar to 6.2, a feature set and a target set. 
+
+
+### Part B
+
+A small percentage of cells in the predictor set contain missing values. Use an imputation function to fill in these missing values (e.g., see Sect. 3.8).
+
+
+
+```{r}
+naniar::gg_miss_var(cmp)
+```
+Not a ton of missing data, but it will be nice to fill these in. It seems like several of the variables are missing the same amount, that might be telling. 
+
+Looks like maybe KNN would be a good choice. 
+
+
+### Part C
+
+Split the data into a training and a test set, pre-process the data, and tune a model of your choice from this chapter. What is the optimal value of the performance metric?
+
+
+We will take a standard approach to this and possibly re-assess once we see the results. It seems like KNN imputation is a good idea. From there we will drop the low variance predictors. Then, because these models like normal, centered, scaled date we will do just that. I am leaving the outliers rather than deleting or re-filling them with a summary statistic because they may be meaningful. Also we are doing a CV to compare results, which should give some robustness to the results even with outliers. 
+
+
+```{r}
+x_imp <- bnstruct::knn.impute(as.matrix(x_raw), k=10)
+
+low_var <- nearZeroVar(x_imp)
+x_lowvar <- x_imp[,-low_var]
+x_trans <-  preProcess(x_lowvar, method=c('center', 'scale', 'BoxCox'))
+x_trans <- predict(x_trans, x_lowvar)
+trainingRows <- createDataPartition(y_raw, p=0.8, list=FALSE)
+
+train_X <- x_trans[trainingRows,]
+train_y <- y_raw[trainingRows]
+
+test_X <- x_trans[-trainingRows,]
+test_y <- y_raw[-trainingRows]
+
+trainingData <- as.data.frame(train_X)
+trainingData$Yield <- train_y
+```
+
+
+
+```{r}
+set.seed(9450)
+
+enet_grid <- expand.grid(.lambda=c(0, 0.01, 0.1),
+                        .fraction=seq(0.05, 1, length = 20))
+
+ctrl <- trainControl(method='cv', number=10)
+
+enet_tune <- train(train_X, train_y,
+                     method="enet", 
+                     tuneGrid = enet_grid,
+                     trControl = ctrl)
+plot(enet_tune)
+```
+
+### Part D
+
+Predict on test set and collect metrics
+
+
+```{r}
+enet_pred <- predict(enet_tune, newdata=train_X)
+
+enet_data <- data.frame(obs = train_y, pred=enet_pred)
+colnames(enet_data) = c('obs', 'pred')
+model_results <- defaultSummary(enet_data)
+model_results
+```
+
+Great! This seems like a good result. All linear models tend to overfit, but this looks good. 
+
+
+
+### Part E
+
+Which predictors are most important in the model you have trained? Do either the biological or process predictors dominate the list?
+
+```{r}
+feature_value<- varImp(enet_tune, scale = FALSE)
+plot(feature_value, top = 20)
+```
+
+This is good, the top four most important features are all manufacturing processes, which means we have _some_ amount of control over them. 7 of the top 10 features are related to the manufacturing process. 
+
+
+### Part F
+
+Explore the relationships between each of the top predictors and the response. How could this information be helpful in improving yield in future runs of the manufacturing process?
+
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+features <- 
+  as.data.frame(feature_value[["importance"]]) %>%
+  arrange(-Overall) %>%
+  top_n(20) %>%
+  rownames()
+
+cmp_imp <- as.data.frame(x_trans)[features]
+cmp_imp$Yield <- cmp$Yield
+
+featurePlot(x = cmp_imp[features], 
+            y = cmp_imp$Yield, 
+            plot = "scatter",
+            type = c("p"))
+```
+
+I would start with the things we can reasonably control, which are the production processes. I would look for one that have some kind of relationship and potentially test yield by change only one process at a time. So process 13, 32, 33, and 09 would be candidates for trials. 
+
+
