@@ -218,7 +218,7 @@ We will take a standard approach to this and possibly re-assess once we see the 
 
 
 ```{r}
-x_imp <- bnstruct::knn.impute(as.matrix(x_raw), k=10)
+x_imp <- knn.impute(as.matrix(x_raw), k=10)
 
 low_var <- nearZeroVar(x_imp)
 x_lowvar <- x_imp[,-low_var]

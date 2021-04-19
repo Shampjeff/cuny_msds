@@ -1,0 +1,332 @@
+---
+title: "Week 11 - Non-Linear Regression"
+author: "Jeff Shamp"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## KJ 7.2
+
+Friedman (1991) introduced several benchmark data sets create by simulation. One of these simulations used the following nonlinear equation to
+create data:
+
+y = 10 sin(πx1x2) + 20(x3 − 0.5)2 + 10x4 + 5x5 + N(0, σ2)
+
+where the x values are random variables uniformly distributed between [0, 1]
+(there are also 5 other non-informative variables also created in the simulation). The package mlbench contains a function called mlbench.friedman1 that
+simulates these data:
+
+Tune several models on these data. 
+
+Which models appear to give the best performance? Does MARS select the
+informative predictors (those named X1–X5)?
+
+```{r message=FALSE, warning=FALSE}
+library(AppliedPredictiveModeling)
+library(mlbench)
+library(caret)
+library(dplyr)
+```
+
+
+```{r}
+set.seed(200)
+training_data <- mlbench.friedman1(200, sd = 1)
+training_data$x <- data.frame(training_data$x)
+featurePlot(training_data$x, training_data$y)
+
+test_data <- mlbench.friedman1(5000, sd = 1)
+test_data$x <- data.frame(test_data$x)
+```
+
+Look at this mess. There might be some associations here, but this pretty non-linear. 
+
+The book provides a benchmark KNN model with RMSE 3.22 and $R^{2} = 0.687$. Let's try a few and see what works best.  
+
+
+### NN model
+
+Way too many parameters go into this model especially the `MaxNWts`. We will preprocess to center and scale just so that all models have the same "ideal" workspace to fit. 
+
+```{r message=FALSE, warning=FALSE}
+nn_tune <- expand.grid(.decay = c(0, 0.01, .1),
+                        .size = c(1:10),
+                        .bag = FALSE)
+
+ctrl <- trainControl(method = "cv")
+
+nn_model <- train(training_data$x, 
+                  training_data$y, 
+                  method = "avNNet",
+                  tuneGrid = nn_tune,
+                  trControl = ctrl,
+                  preProcess = c("center", "scale"),
+                  linout = TRUE,
+                  trace = FALSE,
+                  maxit = 500,
+                  MaxNWts = 10 * (ncol(training_data$x) + 1) + 10 + 1)
+```
+
+```{r message=FALSE, warning=FALSE}
+nn_predict <- predict(nn_model, newdata = test_data$x)
+nn_results <- postResample(pred = nn_predict, obs = test_data$y)
+nn_results
+```
+
+Better with RMSE and worse with R squared. Not really sure $R^{2}$ is a good metric considering it is meant to explain variance of a _linear_ model. Thus, we will call this a better model. 
+
+### SVM RBF
+
+I really like this model type, and it works well with many use cases I've come across. 
+
+```{r}
+svm <- train(x=training_data$x,
+             y=training_data$y, 
+             method="svmRadial", 
+             preProcess=c("center", "scale"), 
+             tuneLength=20)
+
+svm_predict <- predict(svm, newdata=test_data$x)
+svm_results<- postResample(pred=svm_predict, obs=test_data$y)
+svm_results
+```
+
+Better. Not amazingly better but this would be a better choice for it explanability and simplicity. 
+
+### MARS...ahem, earth
+
+Apparently the use the term MARS model is copywritten or something like that, which is why the package calls it "earth". Some people. 
+
+```{r message=FALSE, warning=FALSE}
+mars_tune <- expand.grid(.degree=1:2, .nprune=2:38)
+
+mars_model <- train(x=training_data$x, 
+                    y=training_data$y, 
+                    method="earth",
+                    preProcess = c("center", "scale"),
+                    tuneGrid=mars_tune,
+                    trControl = ctrl)
+
+mars_predict <- predict(mars_model, newdata=test_data$x)
+mars_results <- postResample(pred=mars_predict, obs=test_data$y)
+mars_results
+```
+
+Mars/earth really nails the prediction for this data set. 
+
+
+### Feature Importance
+
+Looks like the MARS model not only identified variable X1-X5 as important, but only gave importance to _those_ variables and zeroed out the remaining. 
+
+```{r}
+varImp(mars_model)
+```
+
+## KJ 7.5
+
+Exercise 6.3 describes data for a chemical manufacturing process. Use
+the same data imputation, data splitting, and pre-processing steps as before
+and train several nonlinear regression models.
+
+
+### Data Prep
+
+I like these through lines in the HW. This dataset and the retail data from time series is nice to revisit. 
+
+First, all the data prep as the same from last week in one block. We will also train up several models and answer questions after all the models have been fit. 
+
+```{r}
+data("ChemicalManufacturingProcess")
+cmp <- as.data.frame(ChemicalManufacturingProcess)
+x_raw <- cmp[,2:58]
+y_raw <- as.matrix(cmp$Yield)
+
+# impute via KNN
+x_imp <- bnstruct::knn.impute(as.matrix(x_raw), k=10)
+# Drop near zero variance
+low_var <- nearZeroVar(x_imp)
+x_lowvar <- x_imp[,-low_var]
+
+# center, scale, Box Cox
+x_trans <-  preProcess(x_lowvar, method=c('center', 'scale', 'BoxCox'))
+x_trans <- predict(x_trans, x_lowvar)
+
+# TTS
+trainingRows <- createDataPartition(y_raw, p=0.8, list=FALSE)
+train_X <- x_trans[trainingRows,]
+train_y <- y_raw[trainingRows]
+
+test_X <- x_trans[-trainingRows,]
+test_y <- y_raw[-trainingRows]
+
+trainingData <- as.data.frame(train_X)
+trainingData$Yield <- train_y
+
+#t_ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+```
+
+We imputed with KNN and that seemed to worked well, so let's model with that. 
+
+```{r}
+set.seed(9450)
+knn_model <- train(train_X, 
+                   train_y,
+                   method = "knn",
+                   preProcess = c("center","scale"),
+                   tuneLength=10)
+
+knn_preds <- predict(knn_model, test_X)
+
+results_knn <- data.frame(t(postResample(pred = knn_preds,
+                                     obs = test_y))) %>%
+  mutate("Model"= "KNN")
+```
+
+
+
+PLS is second and we will store all the results into on data frame and show the metrics all at once. 
+ 
+```{r}
+set.seed(9450)
+pls_model <- train(train_X, 
+                   train_y,
+                   method = "pls",
+                   preProcess = c("center","scale"),
+                   tuneLength=10)
+
+pls_preds <- predict(pls_model, test_X)
+
+results_pls <-
+  data.frame(t(postResample(pred = pls_preds, 
+                            obs = test_y))) %>%
+  mutate("Model"= "PLS")
+```
+
+MARS 
+
+```{r}
+set.seed(9450)
+mars_tune <- expand.grid(.degree=1:2,
+                        .nprune=2:10)
+mars_model <- train(train_X, 
+                    train_y,
+                    method = "earth",
+                    tuneGrid = mars_tune,
+                    preProc = c("center", "scale"))
+
+mars_preds <- predict(mars_model, test_X)
+
+results_mars <- 
+  data.frame(t(postResample(pred = mars_preds,
+                            obs = test_y))) %>%
+  mutate("Model"= "MARS")
+```
+
+SVM RBF
+
+```{r}
+set.seed(9450)
+svm_model <- train(train_X,
+                   train_y,
+                   method = "svmRadial",
+                   tuneLength=10,
+                   preProc = c("center", "scale"))
+svm_preds <- predict(svm_model, test_X)
+
+results_svm <- 
+  data.frame(t(postResample(pred = svm_preds,
+                            obs = test_y))) %>%
+  mutate("Model"= "SVM")
+```
+
+NNet. Very very slow to compute.
+
+```{r}
+set.seed(9450)
+nn_tune <- expand.grid(.decay=c(0, 0.01, 0.1),
+                        .size=c(1, 5, 10),
+                        .bag=FALSE)
+nnet_model <- train(train_X,
+                    train_y,
+                    method = "avNNet",
+                    tuneGrid = nn_tune,
+                    preProc = c("center", "scale"),
+                    trace=FALSE,
+                    linout=TRUE,
+                    maxit=500)
+
+nn_preds <- predict(nnet_model, test_X)
+
+results_nn <- 
+  data.frame(t(postResample(pred = nn_preds,
+                            obs = test_y))) %>%
+  mutate("Model"= "NNetwork")
+```
+
+
+
+Bind the results and display
+
+```{r}
+results<- 
+  bind_rows(results_knn,
+            results_mars,
+            results_pls,
+            results_svm,
+            results_nn)
+results %>%
+  arrange(RMSE)
+```
+
+
+### Part A
+
+(a) Which nonlinear regression model gives the optimal resampling and test
+set performance?
+
+Our model from last week was ElasticNet and scored 1.00 RMSE with 0.711 $R^{2}$ 
+and 0.83 MAE. 
+
+None of the non-linear models are better than last weeks model. Of the non-linear models, there is an arbitrary difference between SVM and MARS. Again, maybe we can say SVM is better due to R square values, but R squared isn't really appropriate for non-linear models. As such, we will break the tie with MAE, giving the SVM the top model. I would still pick last week's model over these. 
+
+
+### Part B
+
+(b) Which predictors are most important in the optimal nonlinear regression model? Do either the biological or process variables dominate the list? 
+How do the top ten important predictors compare to the top ten
+predictors from the optimal linear model?
+
+From last week the ElasticNet model had 7 of top 10 features were manufacturing related, which is what we focused on. Those processes were; 13, 32, 17, 09, 36, 06, and 31 in order. 
+Below, we see that the SVM order MP as; 32, 36, 13, 17, 31, 33, 09. The Biological processes were not as common in the feature important with the SVM. 
+
+Thus, we see that there is solid overlap in MP 32, 13, and 17. I would start with those for further research. 
+
+```{r}
+varImp(svm_model, 10)
+```
+
+
+### Part C
+
+(c) Explore the relationships between the top predictors and the response for
+the predictors that are unique to the optimal nonlinear regression model.
+Do these plots reveal intuition about the biological or process predictors
+and their relationship with yield?
+
+```{r}
+ggplot(as.data.frame(train_X), aes(ManufacturingProcess32, train_y)) +
+  geom_point()
+
+ggplot(as.data.frame(train_X), aes(ManufacturingProcess13, train_y)) +
+  geom_point()
+
+ggplot(as.data.frame(train_X), aes(ManufacturingProcess17, train_y)) +
+  geom_point()
+```
+
+Well, the top predictors look pretty linear. Probably why the linear model was better. Good that we checked other models (might as well to tree boosted in a few weeks!!), but so far a standard linear model looks like a good bet. 
+
