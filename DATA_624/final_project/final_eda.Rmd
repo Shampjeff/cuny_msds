@@ -21,10 +21,9 @@ output:
 ## Data Load - Target Distribution
 
 ```{r message=FALSE, warning=FALSE}
-library(tidyverse)
+library(tidymodels)
 library(moments)
 library(readxl)
-library(tidymodels)
 library(baguette)
 ```
 
@@ -117,6 +116,22 @@ data %>%
   arrange(desc(skewness))
 ```
 
+```{r}
+data %>%
+  rename(Type = `Brand Code`) %>%
+  select(`Mnf Flow`,PH,Type, `Alch Rel`,
+         `Carb Volume`, `Usage cont`, `Oxygen Filler`) %>%
+  pivot_longer(!Type,
+               names_to = "key", 
+               values_to = "value") %>%
+  ggplot(aes(value, fill=Type)) +
+  geom_histogram() +
+  facet_wrap(~key, scales = 'free')
+
+```
+
+
+
 Some Bi-modal, mostly normal. Brand code is meaningful. At least in 2 brand code pairs. 
 
 
@@ -148,13 +163,30 @@ nothing looks amazing.
 ```{r}
 data<- 
   data %>%
-  mutate(`Brand Code`= case_when(
-    str_detect(`Brand Code`,"A") ~ "1", 
-    str_detect(`Brand Code`,"B") ~ "2",
-    str_detect(`Brand Code`,"C") ~ "3",
-    str_detect(`Brand Code`,"D") ~ "4",
-    TRUE ~ `Brand Code`), 
-    `Brand Code` = as.integer(`Brand Code`))
+  mutate(`Mnf Flow` = replace(`Mnf Flow`, `Mnf Flow`< 10, NA)) %>%
+  mutate_if(is.character, factor)
+  # mutate(`Brand Code`= case_when(
+  #   str_detect(`Brand Code`,"A") ~ "1",
+  #   str_detect(`Brand Code`,"B") ~ "2",
+  #   str_detect(`Brand Code`,"C") ~ "3",
+  #   str_detect(`Brand Code`,"D") ~ "4",
+  #   TRUE ~ `Brand Code`),
+  #   `Brand Code` = as.factor(as.integer(`Brand Code`)))
+```
+
+
+
+
+```{r}
+data %>%
+  select(`Mnf Flow`,PH,`Brand Code`, `Alch Rel`,
+         `Carb Volume`, Density, `Oxygen Filler`) %>%
+  pivot_longer(!`Brand Code`,
+               names_to = "key", 
+               values_to = "value") %>%
+  ggplot(aes(value, fill=`Brand Code`)) +
+  geom_histogram() +
+  facet_wrap(~key, scales = 'free')
 ```
 
 
@@ -165,36 +197,92 @@ test_data<- testing(data_split)
 
 ph_recipe<-
   recipe(PH ~ ., data=train_data) %>%
-  step_knnimpute(everything())
+  #update_role(`Brand Code`, new_role = "brand") %>%
+  step_center(all_numeric()) %>%
+  step_BoxCox(all_numeric()) %>%
+  step_impute_knn(all_predictors()) %>%
+  prep()
 
 tree_model<- 
-  boost_tree() %>%
-  set_engine("xgboost", times = 30) %>%
+  bag_tree() %>%
+  set_engine("rpart", times = 30) %>%
   set_mode("regression")
+  # boost_tree() %>%
+  # set_engine("xgboost", times = 30) %>%
+  # set_mode("regression")
 
 
-tree_model
+# mars_model<- 
+#   bag_mars() %>%
+#   set_engine("earth", times=30) %>%
+#   set_mode("regression")
+
 ```
 
-```{r}
-tree_wf<-
-  workflow() %>%
-  add_recipe(ph_recipe) %>%
-  add_model(tree_model)
 
-tree_wf
+
+```{r}
+ph_recipe %>%
+  prep() %>%
+  juice() %>%
+select(`Mnf Flow`,PH, `Alch Rel`, `Brand Code`,
+       `Carb Volume`, `Usage cont`, `Oxygen Filler`) %>%
+pivot_longer(!`Brand Code`,
+             names_to="key",
+             values_to='value') %>%
+ggplot(aes(value, fill=`Brand Code`)) +
+geom_histogram() +
+facet_wrap(~key, scales="free")
+
 ```
 
+
+
 ```{r}
-tree_results<- 
-  tree_wf %>%
-  last_fit(data_split)
+# model_wf<-
+#   workflow() %>%
+#   add_recipe(ph_recipe)
+
+# tree_results<- 
+#   model_wf %>%
+#   add_model(tree_model) %>%
+#   fit(train_data)
+# 
+# mars_results<- 
+#   model_wf %>%
+#   add_model(mars_model) %>%
+#   fit(train_data)
+# 
+# tree_model
+```
+
+
+```{r}
+# tree_results<- 
+#   model_wf %>%
+#   add_model(tree_model) 
+
+# mars_results<- 
+#   model_wf %>%
+#   add_model(mars_model) %>%
+#   last_fit(data_split)
 ```
 
 
 ```{r}
 tree_results %>%
+  last_fit(data_split) %>%
   collect_metrics()
+# mars_results %>%
+#   collect_metrics()
+```
+
+```{r}
+library(vip)
+tree_wf %>%
+  fit(data = train_data) %>%
+  pull_workflow_fit() %>%
+  vip(geom = "col", aesthetics = list(fill='red4'))
 ```
 
 
