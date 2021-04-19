@@ -24,6 +24,8 @@ output:
 library(tidyverse)
 library(moments)
 library(readxl)
+library(tidymodels)
+library(baguette)
 ```
 
 ```{r}
@@ -141,7 +143,59 @@ x %>%
 
 nothing looks amazing. 
 
+### Imputation
 
+```{r}
+data<- 
+  data %>%
+  mutate(`Brand Code`= case_when(
+    str_detect(`Brand Code`,"A") ~ "1", 
+    str_detect(`Brand Code`,"B") ~ "2",
+    str_detect(`Brand Code`,"C") ~ "3",
+    str_detect(`Brand Code`,"D") ~ "4",
+    TRUE ~ `Brand Code`), 
+    `Brand Code` = as.integer(`Brand Code`))
+```
+
+
+```{r}
+data_split<-initial_split(data, prop=.80)
+train_data<- training(data_split)
+test_data<- testing(data_split)
+
+ph_recipe<-
+  recipe(PH ~ ., data=train_data) %>%
+  step_knnimpute(everything())
+
+tree_model<- 
+  boost_tree() %>%
+  set_engine("xgboost", times = 30) %>%
+  set_mode("regression")
+
+
+tree_model
+```
+
+```{r}
+tree_wf<-
+  workflow() %>%
+  add_recipe(ph_recipe) %>%
+  add_model(tree_model)
+
+tree_wf
+```
+
+```{r}
+tree_results<- 
+  tree_wf %>%
+  last_fit(data_split)
+```
+
+
+```{r}
+tree_results %>%
+  collect_metrics()
+```
 
 
 
