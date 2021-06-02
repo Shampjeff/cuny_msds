@@ -1,0 +1,314 @@
+---
+title: "PH Production Report"
+author: "Jeff Shamp, Misha Kollontai, John Kellogg"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r message=FALSE, include = FALSE, warning=FALSE}
+library(tidymodels)
+library(moments)
+library(readxl)
+library(baguette)
+library(randomForest)
+library(ranger)
+library(kknn)
+library(vip)
+library(janitor)
+library(Cubist)
+library(rules)
+library(caret)
+library(dplyr)
+sessionInfo()
+```
+## Intro
+
+New regulations in the pH level of beverages produced at the Cunyville plant required executive leadership to ask the data team to conduct a study analyzing the numerous factors within our manufacturing process. 
+As the data team, we endeavored to model the pH output within our plant based on all available predictive factors. The goal was to identify the predictors that are most indicative of the final pH value of our product as well as providing a model that sufficiently and accurately predicts pH based on given values of predictors. The report will provide the required data to efficiently steer manufacturing processes towards a desired pH level with (ideally) the minimum required changes to settings within the overall system.
+
+## Data Exploration
+
+The available data, provided to us, for our analysis included the output pH values along with 32 predictor variables in a set of 2,571 observations. The predictor variables included one categorical variable for the `Brand` associated with each observation. Each other predictor is a numerical setting within our manufacturing process including various pressure measures, temperature settings, fill levels, etc. The output variable PH is fairly normally distributed around a mean of 8.55 as can be seen in the graph below.
+  
+```{r data_generation, echo = FALSE, warning = FALSE}
+data <- read_excel('StudentData.xlsx') %>%
+  mutate_if(is.character, factor) %>%
+  rename(Brand = 'Brand Code')
+#head(data)
+data %>%
+  ggplot(aes(x=PH)) +
+  geom_histogram(binwidth = .01) +
+  geom_vline(xintercept = mean(data$PH, na.rm = TRUE), linetype ='dashed',
+             color = 'blue', size = 1)
+```
+  
+#### Data Risks  
+In a significant portion of the available data, there is a measurement missing for at least one predictor of a given observation (1,483 of 2,571). In the 32 predictors, we identified a large amount of missing data as well as a few variables with seemingly ‘erroneous’ data.
+
+#### Outliers/Errors
+
+Before any models could be generated from this dataset, the large number of missing data requires attention. Below, we see that three predictors were missing data in more than 2% of observations and eleven predictors missing in at least 1% of observations.  The missing data will heavily skew our predictions. 
+
+Example of missing data:
+
+* Hydraulic Pressures 1, 2, & 3
+* Large sections of the data has no value listed
+  
+```{r outliers, echo = FALSE}
+pct_null <- data.frame(do.call("rbind", map(data,
+                                            ~ mean(is.na(.)))))
+colnames(pct_null) <- c('PCT_NULL')
+totalNulls <- pct_null %>%
+  mutate(VARIABLE = rownames(.)) %>%
+  arrange(desc(PCT_NULL)) %>%
+  filter(PCT_NULL > 0) %>%
+  dplyr::select(VARIABLE, PCT_NULL)
+ggplot(totalNulls, aes(x = reorder(VARIABLE, PCT_NULL), y = PCT_NULL,
+                       label = round(PCT_NULL*100, 1))) + 
+  geom_text(vjust = 0.5, hjust = -0.05)+
+  geom_bar(stat = "identity") +
+  ggtitle("Variables with Missing Information") +
+  xlab("Statistic") + ylab("Percent Missing") + 
+  scale_y_continuous(labels=scales::percent, limits = c(0,0.1)) +  
+  coord_flip() + expand_limits(y = 1)
+```
+  
+#### Erroneous Data
+
+Before imputing the "missing" data, we decided to look over some of the variables and determine if any of the information appeared erroneous.  We specifically looked for data points which entail where the value wasn't missing, but simply did not make sense (i.e. a negative number for a variable where that is impossible). 
+
+Example of erroneous/missing data:
+
+* Variable ‘Mnf Flow’ (Minimum Night Flow)
+* A large subset of the data showed a flow value of -100 even though no other measurements were negative. 
+* Hydraulic Pressures 1, 2, & 3
+* Negative values existed where negative pressure is not possible.
+
+To start we looked over how many outliers were present in the predictors. 
+
+```{r erroneous, warning = FALSE, echo = FALSE}
+totalOutliers <- data.frame(
+  sapply(data %>% select(-PH,-`Brand`), 
+       function(x){length(boxplot.stats(x)$out)/nrow(data)}))
+totalOutliers$VARIABLE_NM <- rownames(totalOutliers)
+colnames(totalOutliers) <- c('PCT_OUTLIERS', 'VARIABLE_NM')
+ggplot(totalOutliers,
+       aes(x = reorder(VARIABLE_NM, PCT_OUTLIERS), y=PCT_OUTLIERS,
+           label = round(PCT_OUTLIERS*100, 1))) + 
+  geom_text(vjust = 0.5, hjust = -0.05)+ geom_bar(stat = "identity") +
+  ggtitle("Variables with Outliers") + xlab("Statistic") +
+  ylab("Percent of Data that is an Outlier") + 
+  scale_y_continuous(labels=scales::percent, limits = c(0,0.2)) +  
+  coord_flip()
+```
+
+Though a significant number of predictors appears to contain a lot of outliers, not many of it appears to be "erroneous". A slight dig into each predictor yielded three that contained data points that appeared to have either been recorded in error or incorrectly entered: `Mnf Flow`, `Hyd Pressure1` and `Hyd Pressure3`. For each of these 3 variables, negative values don't makes sense since neither flow rate nor hydraulic pressure are likely to be negative by design. Each negative entry for `Mnf Flow` is at -100 as opposed to a spread of values and the negative hydraulic pressure values are all slightly below 0. 
+
+```{r erroneous_plot, echo = FALSE, warning = FALSE}
+ggplot(data, aes(x=`Mnf Flow`, y = PH)) + geom_point()
+ggplot(data, aes(x=`Hyd Pressure1`, y = PH)) + geom_point()
+ggplot(data, aes(x=`Hyd Pressure3`, y = PH)) + geom_point()
+```
+
+#### Risk Resolution:
+
+To prevent such erroneous data from skewing our results, converted the negative hydraulic pressures and 'Mnf Flow' readings with NA's to treat them as “missing” alongside the other set of missing data in other variables.  Missing data was imputed using K-nearest neighbor because it takes an average of the values to either side of the missing value to create the missing one and ensure a complete dataset for our modeling. 
+  
+```{r erroneous_correction, echo = FALSE}
+data <- data %>%
+  mutate(`Mnf Flow` = replace(`Mnf Flow`, `Mnf Flow`< 10, NA)) %>%
+  mutate(`Hyd Pressure1` = replace(`Hyd Pressure1`, `Hyd Pressure1`< 0, NA)) %>%
+  mutate(`Hyd Pressure3` = replace(`Hyd Pressure3`, `Hyd Pressure3`< 0, NA))
+```
+
+## Data Preparation
+
+To construct the data for modeling, we first split the data into training/testing sets along an 80/20 percentage split and utilized the `tidymodels` package within R to create what is known as a `recipe`. The `recipe` outlines the following steps in order to pre-process a given dataset.
+
+Steps of the Recipe
+1. Specifies $PH$ as the predicted variable within the dataset
+2. Centers all numeric predictors, normalizing them around 0
+3. Performs a Box Cox transformation on numeric predictors
+4. Runs a K-Nearest Neighbor imputation on all missing data (NAs)
+5. Converts all nominal predictors (`Brand`) into dummy variables
+6. Removes observations for which the predicted variable (`PH`) is missing
+
+```{r preparation, echo = FALSE}
+set.seed(312)
+data_split <-initial_split(data, prop=.80)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+ph_recipe <-
+  recipe(PH ~ ., data=data) %>%
+  step_center(all_numeric(), -all_outcomes()) %>%
+  step_BoxCox(all_numeric(), -all_outcomes()) %>%
+  step_impute_knn(all_predictors()) %>%
+  step_dummy(all_nominal()) %>%
+  step_naomit(all_outcomes())
+ph_training <- ph_recipe %>%
+  prep() %>%
+  juice()
+ph_testing <- ph_recipe %>%
+  prep() %>%
+  bake(test_data)
+```
+
+## Model Creation
+
+With the data ready for modeling, several models were generated. We ran so many model types to ensure we could choose the best method to produce the most accurate results.  The models created and evaluated against the training data are as follows:
+
+* Linear Regression
+* Random Forest (Random Forest engine)
+* Random Forest (ranger engine)
+* k-Nearest Neighbors
+* Cubist
+
+```{r model_creation, echo = FALSE}
+####Linear Regression Model##########################################
+lr_model <- linear_reg() %>%
+  set_engine("lm") %>%
+  fit(PH ~ ., ph_training)
+###Random Forest 'randomForest' Model################################
+rf_model <- rand_forest(trees = 100, mode = "regression") %>%
+  set_engine("randomForest") %>%
+  fit(PH ~ ., ph_training)
+###Random Forest 'ranger' Model######################################
+ranger_model <- rand_forest(trees = 100, mode = "regression") %>%
+  set_engine("ranger") %>%
+  fit(PH ~ ., ph_training)
+###k-Nearest Neighbors Model#########################################
+knn_model <- nearest_neighbor(neighbors = 10) %>%
+  set_mode(mode = "regression") %>%
+  set_engine("kknn") %>%
+  fit(PH ~., ph_training)
+###Cubist Model######################################################
+cubist_model <- cubist_rules(committees = 10, neighbors = 2) %>%
+  set_engine("Cubist") %>%
+  fit(PH ~., ph_training)
+```
+
+```{r model_metrics, echo = FALSE}
+model_metrics <- function(models,test_recipe){
+  mod_methods <- c()
+  mod_metrics <- NULL %>%
+    rbind(c('RMSE','RSQ','MAE'))
+  for (model in models){
+    mod_methods <- c(mod_methods,model$spec$engine)
+    prediction <- predict(model,test_recipe)
+    pred_metrics <- prediction %>%
+      bind_cols(test_recipe) %>%
+      metrics(truth = PH, estimate = .pred) %>%
+      pull(.estimate)
+    mod_metrics <- rbind.data.frame(mod_metrics,round(pred_metrics,4))
+  }
+  mod_metrics <- mod_metrics %>%
+    row_to_names(row_number = 1)
+  rownames(mod_metrics) <- mod_methods
+  
+  return(mod_metrics)
+}
+```
+  
+## Model Selection
+  
+The models were fit to the training dataset and then each was evaluated against the test set for accuracy metrics. In the below table, we summarize 3 performance metrics for each of the 5 evaluated models: Root Mean Square Error (RMSE), R-Squared (RSQ) and Mean Absolute Error (MAE). 
+
+* RMSE (Root Mean Square Error) 
+  * TARGET - lowest value
+* RSQ (R squared)
+  * TARGET - highest value
+* MAE (Mean Absolute Error)
+  * TARGET - lowest value 
+  
+```{r model_table, echo = FALSE}
+models <- list(lr_model,rf_model,ranger_model,knn_model,cubist_model)
+(model_test <- model_metrics(models,ph_testing))
+```
+  
+Tuning the best-performing Cubist model in terms of the Committee and Neighbors parameters did not seem to improve the performance against our test set, suggesting some over-fitting to the training data. We settled on using the original cubist model to move forward with highlighting the most important variables and final predictions. 
+
+## Variable Importance
+
+```{r variable_importance, echo = FALSE}
+train_x <- data.frame(ph_training[,-which(names(ph_training)=='PH')])
+train_y <- ph_training$PH
+cube_model <- cubist(x = train_x,
+                     y = train_y,
+                     committees = 10,
+                     neighbors = 2)
+vi(cube_model)
+```
+
+Based on our model, it appears that the strongest predictors for predicting the output pH of our product are:
+
+1. `Bowl.Setpoint`
+2. `Pressure.Vacuum`
+3. `Balling.lvl`
+4. `Temperature` 
+5. `Alch.Rel`
+
+## Prediction
+
+With our final Cubist model, we will predict values given our test set. See attached `.xlsx` file. 
+
+```{r test_data_load, echo=FALSE}
+eval_data <- read_excel('StudentEvaluation.xlsx') %>%
+  mutate_if(is.character, factor) %>%
+  rename(Brand = 'Brand Code')
+eval_data <- test_data %>%
+  mutate(`Mnf Flow` = replace(`Mnf Flow`, `Mnf Flow`< 10, NA)) %>%
+  mutate(`Hyd Pressure1` = replace(`Hyd Pressure1`, `Hyd Pressure1`< 0, NA)) %>%
+  mutate(`Hyd Pressure3` = replace(`Hyd Pressure3`, `Hyd Pressure3`< 0, NA))
+final_data <- 
+  ph_recipe %>%
+  prep(training= train_data) %>%
+  bake(new_data=eval_data)
+```
+
+```{r predict, echo=FALSE}
+eval_pred<- predict(cubist_model, final_data)
+```
+
+```{r write_xls, echo=FALSE}
+writexl::write_xlsx(eval_pred, "EvaluationPredictions.xlsx")
+```
+
+### Code Appendix
+
+For future use, the following code is used to generate this report.
+
+```{r setup2, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
+```
+<!-- Data Exploration -->
+```{r data_generation}
+```
+```{r outliers}
+```
+```{r erroneous}
+```
+```{r erroneous_plot}
+```
+```{r erroneous_correction}
+```
+<!-- Data Preparation -->
+```{r preparation}
+```
+<!-- Model Creation -->
+```{r model_creation}
+```
+```{r model_metrics}
+```
+<!-- Model Selection -->
+```{r model_table}
+```
+<!-- Variable Importance  -->
+```{r variable_importance}
+```
+<!-- Prediction -->
+```{r test_data_load}
+```
+```{r predict}
+```
+```{r write_xls}
+```

@@ -1,0 +1,235 @@
+---
+title: "624 Final Project EDA"
+author: "Jeff Shamp, Misha Kollontai, John Kellogg"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Intro
+
+Working off of work started by Jeff in 
+https://github.com/Shampjeff/cuny_msds/blob/master/DATA_624/final_project/final_eda.Rmd
+
+
+## Data Load - Target Distribution
+
+```{r message=FALSE, warning=FALSE}
+library(tidymodels)
+library(moments)
+library(readxl)
+library(baguette)
+library(randomForest)
+library(ranger)
+library(kknn)
+library(vip)
+library(janitor)
+library(Cubist)
+library(rules)
+```
+
+```{r}
+sessionInfo()
+```
+
+```{r}
+data <- read_excel('StudentData.xlsx')
+head(data)
+```
+
+```{r}
+data %>%
+  ggplot(aes(x=PH)) +
+  geom_histogram(binwidth = .01)
+```
+
+### Imputation
+
+```{r}
+data<- 
+  data %>%
+  mutate(`Mnf Flow` = replace(`Mnf Flow`, `Mnf Flow`< 10, NA)) %>%
+  mutate_if(is.character, factor) %>%
+  rename(Brand = 'Brand Code')
+```
+
+
+
+```{r}
+data %>%
+  rename(Type = `Brand`) %>%
+  pivot_longer(!Type,
+               names_to = "key", 
+               values_to = "value") %>%
+  ggplot(aes(value, fill=Type)) +
+  geom_histogram() +
+  facet_wrap(~key, scales = 'free')
+```
+
+```{r}
+set.seed(312)
+data_split <-initial_split(data, prop=.80)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+ph_recipe <-
+  recipe(PH ~ ., data=data) %>%
+  #update_role(`Brand Code`, new_role = "brand") %>%
+  step_center(all_numeric(), -all_outcomes()) %>%
+  step_BoxCox(all_numeric(), -all_outcomes()) %>%
+  step_impute_knn(all_predictors()) %>%
+  step_dummy(all_nominal()) %>%
+  step_naomit(all_outcomes())
+ph_training <- ph_recipe %>%
+  prep() %>%
+  juice()
+ph_testing <- ph_recipe %>%
+  prep() %>%
+  bake(test_data)
+```
+
+
+```{r}
+####Linear Regression Model##########################################
+lr_model <- linear_reg() %>%
+  set_engine("lm") 
+lr_model_fit <- lr_model %>%
+  fit(PH ~ ., ph_training)
+lr_wflow <- workflow() %>%
+  add_model(lr_model) %>%
+  add_formula(PH ~ .) %>%
+  fit(ph_training)
+lr_pred <- predict(lr_wflow, ph_testing) %>%
+  bind_cols(ph_testing)
+lr_pred$Delta <- lr_pred$PH - lr_pred$.pred
+# lr_model_fit %>%
+#   predict(ph_testing) %>%
+#   bind_cols(ph_testing) %>%
+#   metrics(truth = PH, estimate = .pred)
+#predict(lr_model,ph_testing)
+```
+
+```{r}
+###Random Forest 'randomForest' Model################################
+rf_model <- rand_forest(trees = 100, 
+                        mode = "regression") %>%
+  set_engine("randomForest") %>%
+  fit(PH ~ ., ph_training)
+# rf_model %>%
+#   predict(ph_testing) %>%
+#   bind_cols(ph_testing) %>%
+#   metrics(truth = PH, estimate = .pred)
+#predict(rf_model,ph_testing)
+```
+
+```{r}
+###Random Forest 'ranger' Model######################################
+ranger_model <- rand_forest(trees = 100, 
+                            mode = "regression") %>%
+  set_engine("ranger") %>%
+  fit(PH ~ ., ph_training)
+# ranger_model %>%
+#   predict(ph_testing) %>%
+#   bind_cols(ph_testing) %>%
+#   metrics(truth = PH, estimate = .pred)
+#predict(ranger_model,ph_testing)
+```
+
+
+
+```{r}
+###k-Nearest Neighbors Model#########################################
+knn_model <- nearest_neighbor(neighbors = 10) %>%
+  set_mode(mode = "regression") %>%
+  set_engine("kknn") %>%
+  fit(PH ~., ph_training)
+# knn_model %>%
+#   predict(ph_testing) %>%
+#   bind_cols(ph_testing) %>%
+#   metrics(truth = PH, estimate = .pred)
+#predict(knn_model,ph_testing)
+```
+
+```{r}
+cubist_model <- cubist_rules(committees = 10, neighbors = 2) %>%
+  set_engine("Cubist") %>%
+  fit(PH ~., ph_training)
+```
+
+```{r}
+model_metrics <- function(models,test_recipe){
+  mod_methods <- c()
+  mod_metrics <- NULL %>%
+    rbind(c('RMSE','RSQ','MAE'))
+  for (model in models){
+    mod_methods <- c(mod_methods,model$spec$engine)
+    prediction <- predict(model,test_recipe)
+    pred_metrics <- prediction %>%
+      bind_cols(test_recipe) %>%
+      metrics(truth = PH, estimate = .pred) %>%
+      pull(.estimate)
+    mod_metrics <- rbind.data.frame(mod_metrics,pred_metrics)
+  }
+  mod_metrics <- mod_metrics %>%
+    row_to_names(row_number = 1)
+  rownames(mod_metrics) <- mod_methods
+  
+  return(mod_metrics)
+}
+```
+
+```{r}
+models <- list(lr_model_fit,rf_model,ranger_model,knn_model,cubist_model)
+(model_test <- model_metrics(models,ph_testing))
+```
+
+
+
+```{r}
+cube_grid <- expand.grid(committees = 1:20, neighbors = c(5, 7, 9))
+set.seed(44)
+folds <- vfold_cv(train_data)
+cubist_model <- cubist_rules(committees = tune(), neighbors = tune()) %>%
+  set_engine("Cubist")
+cube_tune_res <- cubist_model %>%
+  tune_grid(PH ~ ., resamples = folds, grid = cube_grid)
+```
+
+```{r}
+cube_tune_res %>%
+  collect_metrics() %>%
+  filter(.metric == "rmse") %>%
+  mutate(neighbors = factor(neighbors)) %>%
+  ggplot(aes(x = committees, y = mean, col = neighbors)) +
+  geom_point() +
+  geom_line() +
+  scale_color_brewer(palette = "Dark2") +
+  theme(legend.position = "top")
+cube_tune_res %>%
+  collect_metrics() %>%
+  filter(.metric == "rsq") %>%
+  mutate(neighbors = factor(neighbors)) %>%
+  ggplot(aes(x = committees, y = mean, col = neighbors)) +
+  geom_point() +
+  geom_line() +
+  scale_color_brewer(palette = "Dark2") +
+  theme(legend.position = "top")
+```
+
+
+```{r}
+cubist_model_tuned <- cubist_rules(committees = 12, neighbors = 7) %>%
+  set_engine("Cubist") %>%
+  fit(PH ~., ph_training)
+```
+
+```{r}
+models <- list(lr_model_fit,rf_model,ranger_model,knn_model, cubist_model_tuned)
+model_test <- model_metrics(models,ph_testing)
+model_test %>% arrange(RMSE, MAE)
+```
+
+
+Looks like Cubist is the winner. Lowest MAE and RMSE. It is not the lowest RSQ however, R square is best for linear models, so it makes sense that the RSQ metric should be weighted less in model evaluation.
+
