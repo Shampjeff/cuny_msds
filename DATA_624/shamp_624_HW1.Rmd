@@ -38,7 +38,9 @@ gas - The Australian monthly gas prodcution from 1956 to
 ### Part a
 Using the `autoplot` function can give us a graphic disply of `ts` datasets.
 Looking at the graphs we can see if there is any trend, seasonality, or other
-cyclical patterns in the datasets.       
+cyclical patterns in the datasets.    
+
+
 
 ```{r}
 autoplot(gold)
@@ -92,7 +94,17 @@ head(tute1)
 This is given in the book
 
 ```{r}
+tute1
+```
+
+
+```{r}
 tute_ts <- ts(tute1[,-1], start=1981, frequency=4)
+```
+
+
+```{r}
+tute_ts
 ```
 
 

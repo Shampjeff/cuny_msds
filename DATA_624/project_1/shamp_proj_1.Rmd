@@ -410,7 +410,7 @@ ggseasonplot(power_ts)
 ```
 
 This seems like less of a clear upward trend and more like a cycle to the year-over-year
-power demand. Let us take aquick look at a decomposition.
+power demand. Let us take a quick look at a decomposition.
 
 ```{r warning=FALSE, message=FALSE}
 library(seasonal)
